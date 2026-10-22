@@ -46,23 +46,48 @@ export async function fetchMasterDataFromSheet(): Promise<{ stores: MasterStore[
     const json = await res.json();
 
     if (json.status === "success") {
-      const stores: MasterStore[] = (json.stores || []).map((s: any) => ({
-        code: s.code || s.name,
-        name: s.name,
-        phone: s.phone || "",
-        location: s.location || "",
-        defaultItem: s.defaultItem || "",
-        carrierSpec: s.carrierSpec || "",
-        category: resolveCategory(s.category || "", s.defaultItem || "", s.location || "")
-      }));
+      const stores: MasterStore[] = (json.stores || []).map((s: any) => {
+        // Handle array row mapping or object mapping explicitly
+        if (Array.isArray(s)) {
+          return {
+            code: String(s[0] || ""),
+            name: String(s[1] || s[0] || ""),
+            phone: String(s[2] || ""),
+            location: String(s[3] || ""),
+            defaultItem: String(s[4] || ""),
+            carrierSpec: String(s[5] || ""),
+            category: resolveCategory(String(s[6] || ""), String(s[4] || ""), String(s[3] || ""))
+          };
+        }
+        return {
+          code: String(s.code || s.name || ""),
+          name: String(s.name || s.code || ""),
+          phone: String(s.phone || ""),
+          location: String(s.location || ""),
+          defaultItem: String(s.defaultItem || s.item || ""),
+          carrierSpec: String(s.carrierSpec || s.spec || ""),
+          category: resolveCategory(String(s.category || ""), String(s.defaultItem || s.item || ""), String(s.location || ""))
+        };
+      });
 
-      const customers: MasterCustomer[] = (json.customers || []).map((c: any) => ({
-        name: c.name,
-        phone: c.phone || "",
-        address: c.address || "",
-        usedStores: Array.isArray(c.usedStores) ? c.usedStores : [],
-        lastUpdated: c.lastUpdated || ""
-      }));
+      const customers: MasterCustomer[] = (json.customers || []).map((c: any) => {
+        if (Array.isArray(c)) {
+          return {
+            name: String(c[0] || ""),
+            phone: String(c[1] || ""),
+            address: String(c[2] || ""),
+            usedStores: c[3] ? String(c[3]).split(",").map(st => st.trim()) : [],
+            lastUpdated: String(c[4] || "")
+          };
+        }
+        return {
+          name: String(c.name || ""),
+          phone: String(c.phone || ""),
+          address: String(c.address || ""),
+          usedStores: Array.isArray(c.usedStores) ? c.usedStores : (c.usedStores ? String(c.usedStores).split(",").map(st => st.trim()) : []),
+          lastUpdated: String(c.lastUpdated || "")
+        };
+      });
 
       // 로컬스토리지 백업 저장
       localStorage.setItem("cached_stores", JSON.stringify(stores));
@@ -84,9 +109,52 @@ export function logOrderToSheetAsync(order: any, customer?: any): void {
       method: "POST",
       mode: "no-cors",
       headers: { "Content-Type": "text/plain;charset=utf-8" },
-      body: JSON.stringify({ order, customer })
+      body: JSON.stringify({ action: "logOrder", order, customer })
     }).catch(e => console.warn("시트 저장 오류:", e));
   } catch (err) {
     console.warn("시트 호출 예외:", err);
+  }
+}
+
+// 업체 정보 구글 시트 거래처 탭 실시간 자동 저장/수정
+export function saveStoreToSheetAsync(store: any): void {
+  try {
+    fetch(GAS_URL, {
+      method: "POST",
+      mode: "no-cors",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({ action: "saveStore", store })
+    }).catch(e => console.warn("업체 시트 저장 오류:", e));
+  } catch (err) {
+    console.warn("업체 시트 호출 예외:", err);
+  }
+}
+
+// 구글 시트 출고내역 목록 조회
+export async function fetchOrderLogsFromSheet(): Promise<any[] | null> {
+  try {
+    const res = await fetch(`${GAS_URL}?action=getLogs&t=${Date.now()}`, { method: "GET" });
+    if (!res.ok) throw new Error("네트워크 응답 오류");
+    const json = await res.json();
+    if (json.status === "success" && Array.isArray(json.logs)) {
+      return json.logs;
+    }
+  } catch (err) {
+    console.warn("출고내역 조회 실패:", err);
+  }
+  return null;
+}
+
+// 구글 시트 출고내역 해당 행 취소 기록
+export function cancelOrderToSheetAsync(rowId: string | number): void {
+  try {
+    fetch(GAS_URL, {
+      method: "POST",
+      mode: "no-cors",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({ action: "cancelOrder", cancelRow: rowId })
+    }).catch(e => console.warn("출고 취소 시트 오류:", e));
+  } catch (err) {
+    console.warn("출고 취소 예외:", err);
   }
 }

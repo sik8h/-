@@ -51,28 +51,24 @@
   </header>
 
   <!-- Navigation Tabs -->
-  <nav class="bg-slate-800 border-b border-slate-700 flex text-xs font-bold text-slate-300 sticky top-[49px] z-30">
-    <button onclick="switchTab('tabOrder')" id="tabBtnOrder" class="flex-1 py-2.5 text-center border-b-2 border-amber-400 text-amber-400 flex justify-center items-center gap-1">
+  <nav class="bg-slate-800 border-b border-slate-700 flex text-xs font-bold text-slate-300 sticky top-[49px] z-30 overflow-x-auto">
+    <button onclick="switchTab('tabOrder')" id="tabBtnOrder" class="flex-1 py-2.5 px-2 text-center border-b-2 border-amber-400 text-amber-400 flex justify-center items-center gap-1 shrink-0">
       <span>📦</span><span>택배접수</span>
     </button>
-    <button onclick="switchTab('tabUnpaid')" id="tabBtnUnpaid" class="flex-1 py-2.5 text-center border-b-2 border-transparent hover:text-slate-100 flex justify-center items-center gap-1">
+    <button onclick="switchTab('tabUnpaid')" id="tabBtnUnpaid" class="flex-1 py-2.5 px-2 text-center border-b-2 border-transparent hover:text-slate-100 flex justify-center items-center gap-1 shrink-0">
       <span>💰</span><span>미수금관리</span>
     </button>
-    <button onclick="switchTab('tabVip')" id="tabBtnVip" class="flex-1 py-2.5 text-center border-b-2 border-transparent hover:text-slate-100 flex justify-center items-center gap-1">
+    <button onclick="switchTab('tabVip')" id="tabBtnVip" class="flex-1 py-2.5 px-2 text-center border-b-2 border-transparent hover:text-slate-100 flex justify-center items-center gap-1 shrink-0">
       <span>⭐</span><span>단골DB</span>
     </button>
-    <button onclick="switchTab('tabFolder')" id="tabBtnFolder" class="flex-1 py-2.5 text-center border-b-2 border-transparent hover:text-slate-100 flex justify-center items-center gap-1">
-      <span>📁</span><span>폴더/업체관리</span>
+    <button onclick="switchTab('tabFolder')" id="tabBtnFolder" class="flex-1 py-2.5 px-2 text-center border-b-2 border-transparent hover:text-slate-100 flex justify-center items-center gap-1 shrink-0">
+      <span>📁</span><span>업체/폴더관리</span>
+    </button>
+    <button onclick="switchTab('tabLogs')" id="tabBtnLogs" class="flex-1 py-2.5 px-2 text-center border-b-2 border-transparent hover:text-slate-100 flex justify-center items-center gap-1 shrink-0">
+      <span>📋</span><span>출고내역</span>
     </button>
   </nav>
 
-  <!-- Voice Recognition Bar -->
-  <div class="bg-gradient-to-r from-amber-500 to-orange-600 p-2 shadow-md">
-    <button id="voiceBtn" onclick="toggleVoiceRecognition()" class="w-full bg-slate-950/80 hover:bg-slate-950 text-amber-300 font-bold py-1.5 px-3 rounded-xl flex items-center justify-center space-x-2 border border-amber-400/40 active:scale-[0.99] transition">
-      <span id="voiceIcon" class="text-base">🎤</span>
-      <span id="voiceText" class="text-xs">음성으로 업체·타입·건수 말하기 (터치하여 시작)</span>
-    </button>
-  </div>
 
   <!-- Main Content Area -->
   <main class="flex-1 p-3 max-w-3xl w-full mx-auto pb-24 space-y-3">
@@ -98,8 +94,13 @@
           </label>
         </div>
 
-        <div class="space-y-1.5">
-          <textarea id="rawTextInput" rows="2.5" class="w-full bg-slate-950 border border-slate-700 text-xs rounded-xl p-2.5 text-slate-200 focus:outline-none focus:border-amber-500 font-mono" placeholder="카톡/문자 원문 통째로 붙여넣기 (예: 보내는사람: 해향유통 이인석 010-9995-7869 \n받는사람: 창동하나로 장영애 010-7585-5803 서울 도봉구 마들로 11길 20...)"></textarea>
+        <div class="space-y-1.5 relative">
+          <div class="relative">
+            <textarea id="rawTextInput" rows="2.5" class="w-full bg-slate-950 border border-slate-700 text-xs rounded-xl p-2.5 pr-10 text-slate-200 focus:outline-none focus:border-amber-500 font-mono" placeholder="카톡/문자 원문 통째로 붙여넣기 (예: 보내는사람: 해향유통 이인석 010-9995-7869 \n받는사람: 창동하나로 장영애 010-7585-5803 서울 도봉구 마들로 11길 20...)"></textarea>
+            <button id="voiceBtn" onclick="toggleVoiceRecognition()" title="음성 인식" class="absolute right-2 top-2 w-7 h-7 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-full flex items-center justify-center font-bold text-xs shadow border border-amber-300 transition active:scale-95">
+              🎤
+            </button>
+          </div>
           <div class="flex justify-end gap-2">
             <button onclick="clearRawTextInput()" class="bg-slate-700 text-xs px-2.5 py-1.5 rounded-lg text-slate-300">비우기</button>
             <button onclick="parseRawText()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs px-3.5 py-1.5 rounded-lg shadow">
@@ -130,6 +131,21 @@
           <!-- Dynamic recipient cards -->
         </div>
 
+        <!-- Item Tag Manager & Fast Chips Bar -->
+        <div class="mt-2 pt-2 border-t border-slate-700/60">
+          <div class="flex justify-between items-center mb-1">
+            <span class="text-[11px] font-bold text-amber-300 flex items-center gap-1">
+              <span>🏷️</span> 원터치 품목 선택
+            </span>
+            <button onclick="openItemEditModal()" class="text-[10px] bg-slate-700 hover:bg-slate-600 text-amber-300 px-2 py-0.5 rounded-lg border border-slate-600 font-bold">
+              ✏️ 품목 편집
+            </button>
+          </div>
+          <div id="itemChipsContainer" class="flex gap-1.5 overflow-x-auto pb-1 text-xs">
+            <!-- JS item chips -->
+          </div>
+        </div>
+
         <div id="addRecipientBtnContainer" class="hidden mt-2 flex gap-2">
           <button onclick="addRecipientCard()" class="flex-1 bg-slate-700 hover:bg-slate-600 text-amber-300 font-bold text-xs py-2.5 px-3 rounded-xl border border-amber-500/30 flex justify-center items-center gap-1 shadow">
             <span>➕</span> 수취인 카드 추가
@@ -146,8 +162,8 @@
           <label class="text-xs font-bold text-amber-400 flex items-center gap-1">
             <span>🏪</span> [1] 폴더 선택 및 업체 지정 (100% 공식 풀네임)
           </label>
-          <button onclick="openFolderAddModal()" class="text-[11px] bg-slate-700 hover:bg-slate-600 text-amber-300 px-2 py-1 rounded-lg border border-slate-600 font-bold">
-            📁 +새 폴더
+          <button onclick="openCompanyAddModal()" class="text-[11px] bg-slate-700 hover:bg-slate-600 text-amber-300 px-2 py-1 rounded-lg border border-slate-600 font-bold">
+            🏢 +새 업체
           </button>
         </div>
 
@@ -168,21 +184,6 @@
         <!-- Vertical Accordion UI [📁 폴더명 (N)] -->
         <div id="verticalAccordionContainer" class="space-y-2 max-h-64 overflow-y-auto p-1 bg-slate-900/80 rounded-xl border border-slate-700/60">
           <!-- JS Vertical Accordion Folders -->
-        </div>
-
-        <!-- Item Tag Manager & Fast Chips -->
-        <div>
-          <div class="flex justify-between items-center mb-1">
-            <span class="text-[11px] font-bold text-slate-300 flex items-center gap-1">
-              <span>🏷️</span> 원터치 품목 선택
-            </span>
-            <button onclick="openItemEditModal()" class="text-[10px] bg-slate-700 hover:bg-slate-600 text-amber-300 px-2 py-0.5 rounded-lg border border-slate-600 font-bold">
-              ✏️ 품목 편집
-            </button>
-          </div>
-          <div id="itemChipsContainer" class="flex gap-1.5 overflow-x-auto pb-1 text-xs">
-            <!-- JS item chips -->
-          </div>
         </div>
 
         <!-- Selected Company Info & Sender Override -->
@@ -217,9 +218,12 @@
               <div class="text-[10px] text-slate-400">
                 업체 정산과 실제 송장 표기 발송인이 다를 때 지정합니다.
               </div>
+              <div id="recentSendersChips" class="flex gap-1 overflow-x-auto pb-1 text-[11px]">
+                <!-- JS Recent Learned Senders -->
+              </div>
               <div class="grid grid-cols-2 gap-2">
-                <input type="text" id="actualSenderNameInput" oninput="updateSummaryOutput()" placeholder="실제 발송인 상호/성명" class="bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-xs text-white">
-                <input type="tel" id="actualSenderPhoneInput" oninput="updateSummaryOutput()" placeholder="실제 발송인 연락처" class="bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-xs text-white font-mono">
+                <input type="text" id="actualSenderNameInput" oninput="updateSummaryOutput()" placeholder="실제 발송인 상호/성명 *" class="bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-xs text-white">
+                <input type="tel" id="actualSenderPhoneInput" oninput="updateSummaryOutput()" placeholder="실제 발송인 연락처 *" class="bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-xs text-white font-mono">
               </div>
             </div>
           </div>
@@ -260,9 +264,12 @@
           </div>
         </div>
 
-        <div>
-          <button onclick="shareKakaoWithWatermark()" class="w-full bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-600 hover:to-amber-700 text-slate-950 font-black text-sm py-3.5 px-4 rounded-xl shadow-lg border border-yellow-300/40 flex justify-center items-center gap-2 active:scale-[0.99] transition">
-            <span class="text-base">🚀</span> 워터마크 사진 + 텍스트 카톡 공유 / 접수 저장
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <button onclick="shareKakaoWithWatermark()" class="w-full bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-600 hover:to-amber-700 text-slate-950 font-black text-xs sm:text-sm py-3.5 px-3 rounded-xl shadow-lg border border-yellow-300/40 flex justify-center items-center gap-1.5 active:scale-[0.99] transition">
+            <span class="text-base">🚀</span> 워터마크 사진 + 텍스트 카톡 공유
+          </button>
+          <button onclick="shareTextOnlyKakao()" class="w-full bg-slate-700 hover:bg-slate-600 text-amber-300 font-bold text-xs sm:text-sm py-3.5 px-3 rounded-xl shadow border border-slate-600 flex justify-center items-center gap-1.5 active:scale-[0.99] transition">
+            <span class="text-base">💬</span> 사진 없이 텍스트만 카톡 전송
           </button>
         </div>
       </div>
@@ -304,6 +311,48 @@
       </div>
     </section>
 
+    <!-- TAB 5: 📋 출고내역 (실시간 구글 시트 장부 표) -->
+    <section id="tabLogs" class="hidden space-y-3">
+      <div class="bg-slate-800 p-3.5 rounded-2xl border border-slate-700 shadow-md space-y-3">
+        <div class="flex justify-between items-center">
+          <h2 class="text-xs font-bold text-amber-400 flex items-center gap-1">
+            <span>📋</span> 구글 시트 출고내역 장부 (B안: 심플 장부 표)
+          </h2>
+          <button onclick="loadAndRenderOrderLogs()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-3 py-1.5 rounded-lg border border-emerald-500 flex items-center gap-1">
+            <span>🔄</span> 새로고침
+          </button>
+        </div>
+
+        <div class="flex gap-2">
+          <input type="text" id="orderLogsSearchInput" oninput="renderOrderLogsTable()" placeholder="🔍 거래처 / 받는사람 / 전화번호 검색..." class="flex-1 bg-slate-900 border border-slate-700 text-xs rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-500">
+          <button onclick="toggleTodayLogsFilter()" id="todayLogsFilterBtn" class="bg-slate-700 text-xs px-3 py-2 rounded-xl text-slate-300 font-bold border border-slate-600">
+            📅 오늘 내역만
+          </button>
+        </div>
+
+        <div class="overflow-x-auto rounded-xl border border-slate-700">
+          <table class="w-full text-left border-collapse text-xs">
+            <thead>
+              <tr class="bg-slate-900 text-amber-300 font-bold border-b border-slate-700 text-[11px]">
+                <th class="p-2 whitespace-nowrap">접수일시</th>
+                <th class="p-2 whitespace-nowrap">거래처</th>
+                <th class="p-2 whitespace-nowrap">규격/운임</th>
+                <th class="p-2 whitespace-nowrap">받는사람</th>
+                <th class="p-2 whitespace-nowrap">전화번호</th>
+                <th class="p-2 whitespace-nowrap">주소</th>
+                <th class="p-2 whitespace-nowrap">품목/수량</th>
+                <th class="p-2 whitespace-nowrap">배송메모</th>
+                <th class="p-2 whitespace-nowrap text-center">관리</th>
+              </tr>
+            </thead>
+            <tbody id="orderLogsTableBody" class="divide-y divide-slate-800 text-slate-200 text-[11px]">
+              <!-- JS dynamic table rows -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
     <!-- TAB 3: ⭐ 단골DB -->
     <section id="tabVip" class="hidden space-y-3">
       <div class="bg-slate-800 p-3.5 rounded-2xl border border-slate-700 shadow-md space-y-3">
@@ -331,8 +380,8 @@
           <h2 class="text-xs font-bold text-amber-400 flex items-center gap-1">
             <span>📁</span> 폴더 생성 및 소속 업체 관리 (100% 풀네임)
           </h2>
-          <button onclick="openFolderAddModal()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs px-2.5 py-1.5 rounded-lg font-bold">
-            📁 +새 폴더
+          <button onclick="openCompanyAddModal()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs px-2.5 py-1.5 rounded-lg font-bold">
+            🏢 +새 업체
           </button>
         </div>
 
@@ -502,7 +551,7 @@
 
   <!-- JavaScript Engine v3.5 & Google Sheet Integration -->
   <script type="module">
-    import { fetchMasterDataFromSheet, resolveCategory, logOrderToSheetAsync } from './src/services/googleSheetService.js';
+    import { fetchMasterDataFromSheet, resolveCategory, logOrderToSheetAsync, saveStoreToSheetAsync, fetchOrderLogsFromSheet, cancelOrderToSheetAsync } from './src/services/googleSheetService.js';
 
     const DEFAULT_FOLDERS = [
       {
@@ -598,6 +647,7 @@
     let historyList = [];
     let unpaidLedger = {};
     let itemChips = [];
+    let learnedSenders = [];
     let geminiApiKey = "";
     let isMultiMode = false;
 
@@ -626,6 +676,9 @@
       const savedChips = localStorage.getItem("custom_items") || localStorage.getItem("woojung_itemChips");
       itemChips = savedChips ? JSON.parse(savedChips) : [...DEFAULT_ITEM_CHIPS];
 
+      const savedSenders = localStorage.getItem("woojung_learned_senders");
+      learnedSenders = savedSenders ? JSON.parse(savedSenders) : [];
+
       geminiApiKey = localStorage.getItem("woojung_geminiKey") || "";
       if (geminiApiKey) document.getElementById("geminiApiKeyInput").value = geminiApiKey;
 
@@ -642,7 +695,39 @@
       localStorage.setItem("woojung_unpaidLedger", JSON.stringify(unpaidLedger));
       localStorage.setItem("custom_items", JSON.stringify(itemChips));
       localStorage.setItem("woojung_itemChips", JSON.stringify(itemChips));
+      localStorage.setItem("woojung_learned_senders", JSON.stringify(learnedSenders));
       localStorage.setItem("woojung_geminiKey", geminiApiKey);
+    }
+
+    function renderLearnedSendersChips() {
+      const container = document.getElementById("recentSendersChips");
+      if (!container) return;
+      container.innerHTML = "";
+
+      learnedSenders.forEach(s => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "bg-slate-900 text-sky-300 border border-slate-700 px-2 py-0.5 rounded-lg font-bold hover:bg-slate-800 text-[10px] shrink-0";
+        btn.innerText = `${s.name} (${s.phone})`;
+        btn.onclick = () => {
+          document.getElementById("actualSenderNameInput").value = s.name;
+          document.getElementById("actualSenderPhoneInput").value = s.phone;
+          updateSummaryOutput();
+        };
+        container.appendChild(btn);
+      });
+    }
+
+    function learnNewSender(name, phone) {
+      if (!name || !phone) return;
+      const existingIdx = learnedSenders.findIndex(s => s.name === name || s.phone === phone);
+      if (existingIdx >= 0) {
+        learnedSenders.splice(existingIdx, 1);
+      }
+      learnedSenders.unshift({ name, phone });
+      if (learnedSenders.length > 10) learnedSenders = learnedSenders.slice(0, 10);
+      saveState();
+      renderLearnedSendersChips();
     }
 
     function toggleMultiMode(enabled) {
@@ -742,16 +827,19 @@
       speechRecognition.interimResults = false;
       speechRecognition.maxAlternatives = 1;
 
+      const vBtn = document.getElementById("voiceBtn");
+
       speechRecognition.onstart = () => {
         isListening = true;
-        document.getElementById("voiceIcon").innerText = "🔴";
-        document.getElementById("voiceText").innerText = "음성 인식 중... (말씀해 주세요)";
+        if (vBtn) {
+          vBtn.innerText = "🔴";
+          vBtn.classList.add("animate-pulse", "bg-rose-500");
+        }
       };
 
       speechRecognition.onresult = (event) => {
         const transcript = event.results[0][0].transcript;
         console.log("Speech transcript:", transcript);
-        document.getElementById("voiceText").innerText = `인식됨: "${transcript}"`;
         parseVoiceCommand(transcript);
       };
 
@@ -762,8 +850,10 @@
 
       speechRecognition.onend = () => {
         isListening = false;
-        document.getElementById("voiceIcon").innerText = "🎤";
-        document.getElementById("voiceText").innerText = "음성으로 업체·타입·건수 말하기 (터치하여 시작)";
+        if (vBtn) {
+          vBtn.innerText = "🎤";
+          vBtn.classList.remove("animate-pulse", "bg-rose-500");
+        }
       };
 
       speechRecognition.start();
@@ -812,6 +902,7 @@
       loadAppState();
       renderCompanyAccordion();
       renderItemChips();
+      renderLearnedSendersChips();
       updateSelectedCompanyDisplay();
 
       if (recipientCards.length === 0) addRecipientCard();
@@ -856,6 +947,7 @@
     window.openCompanyEditModal = openCompanyEditModal;
     window.saveCompanyEditForm = saveCompanyEditForm;
     window.openFolderAddModal = openFolderAddModal;
+    window.openCompanyAddModal = openCompanyAddModal;
     window.editFolderName = editFolderName;
     window.deleteFolder = deleteFolder;
     window.renderUnpaidLedger = renderUnpaidLedger;
@@ -864,6 +956,7 @@
     window.saveUnpaidManual = saveUnpaidManual;
     window.handlePhotoSelect = handlePhotoSelect;
     window.shareKakaoWithWatermark = shareKakaoWithWatermark;
+    window.shareTextOnlyKakao = shareTextOnlyKakao;
     window.saveGeminiApiKey = saveGeminiApiKey;
     window.openVipFormModal = openVipFormModal;
     window.editVipModal = editVipModal;
@@ -875,21 +968,128 @@
     window.handleItemDragStart = handleItemDragStart;
     window.handleItemDragOver = handleItemDragOver;
     window.handleItemDrop = handleItemDrop;
+    window.loadAndRenderOrderLogs = loadAndRenderOrderLogs;
+    window.renderOrderLogsTable = renderOrderLogsTable;
+    window.toggleTodayLogsFilter = toggleTodayLogsFilter;
+    window.cancelOrderLogRow = cancelOrderLogRow;
+
+    let cachedOrderLogs = [];
+    let isTodayFilterOnly = false;
 
     function switchTab(tabId) {
-      ['tabOrder', 'tabUnpaid', 'tabVip', 'tabFolder'].forEach(id => {
+      ['tabOrder', 'tabUnpaid', 'tabVip', 'tabFolder', 'tabLogs'].forEach(id => {
         const elem = document.getElementById(id);
         const btn = document.getElementById('tabBtn' + id.replace('tab', ''));
-        if (id === tabId) {
-          elem.classList.remove('hidden');
-          btn.classList.add('border-amber-400', 'text-amber-400');
-          btn.classList.remove('border-transparent', 'text-slate-300');
-        } else {
-          elem.classList.add('hidden');
-          btn.classList.remove('border-amber-400', 'text-amber-400');
-          btn.classList.add('border-transparent', 'text-slate-300');
+        if (elem && btn) {
+          if (id === tabId) {
+            elem.classList.remove('hidden');
+            btn.classList.add('border-amber-400', 'text-amber-400');
+            btn.classList.remove('border-transparent', 'text-slate-300');
+          } else {
+            elem.classList.add('hidden');
+            btn.classList.remove('border-amber-400', 'text-amber-400');
+            btn.classList.add('border-transparent', 'text-slate-300');
+          }
         }
       });
+
+      if (tabId === 'tabLogs') {
+        loadAndRenderOrderLogs();
+      }
+    }
+
+    async function loadAndRenderOrderLogs() {
+      const tbody = document.getElementById("orderLogsTableBody");
+      if (tbody) {
+        tbody.innerHTML = `<tr><td colspan="9" class="p-4 text-center text-slate-400 font-bold">⏳ 구글 시트에서 최신 출고내역을 불러오는 중...</td></tr>`;
+      }
+
+      const logs = await fetchOrderLogsFromSheet();
+      if (logs) {
+        cachedOrderLogs = logs;
+      }
+      renderOrderLogsTable();
+    }
+
+    function toggleTodayLogsFilter() {
+      isTodayFilterOnly = !isTodayFilterOnly;
+      const btn = document.getElementById("todayLogsFilterBtn");
+      if (btn) {
+        if (isTodayFilterOnly) {
+          btn.classList.add("bg-amber-500", "text-slate-950", "border-amber-400");
+          btn.classList.remove("bg-slate-700", "text-slate-300", "border-slate-600");
+        } else {
+          btn.classList.remove("bg-amber-500", "text-slate-950", "border-amber-400");
+          btn.classList.add("bg-slate-700", "text-slate-300", "border-slate-600");
+        }
+      }
+      renderOrderLogsTable();
+    }
+
+    function renderOrderLogsTable() {
+      const tbody = document.getElementById("orderLogsTableBody");
+      if (!tbody) return;
+      tbody.innerHTML = "";
+
+      const query = (document.getElementById("orderLogsSearchInput")?.value || "").trim().toLowerCase();
+      const todayStr = new Date().toLocaleDateString("ko-KR");
+
+      let filtered = cachedOrderLogs.filter(log => {
+        if (isTodayFilterOnly) {
+          const logDateStr = new Date(log.timestamp || log.date || "").toLocaleDateString("ko-KR");
+          if (logDateStr !== todayStr && !String(log.timestamp).includes(todayStr)) return false;
+        }
+
+        if (query) {
+          const combined = `${log.store || ''} ${log.recipientName || ''} ${log.recipientPhone || ''} ${log.recipientAddr || ''} ${log.item || ''}`.toLowerCase();
+          if (!combined.includes(query)) return false;
+        }
+
+        return true;
+      });
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="9" class="p-4 text-center text-slate-400">출고 기록이 없습니다.</td></tr>`;
+        return;
+      }
+
+      filtered.forEach((item, idx) => {
+        const tr = document.createElement("tr");
+        const isCancelled = item.status === "취소됨" || item.cancelled === true;
+
+        tr.className = `hover:bg-slate-800/80 transition ${isCancelled ? 'line-through text-slate-500 bg-slate-950/60' : (idx % 2 === 0 ? 'bg-slate-900/40' : 'bg-slate-900/80')}`;
+
+        tr.innerHTML = `
+          <td class="p-2 whitespace-nowrap font-mono text-[10px] text-slate-400">${escapeHtml(String(item.timestamp || item.date || ''))}</td>
+          <td class="p-2 whitespace-nowrap font-bold text-amber-300">${escapeHtml(String(item.store || ''))}</td>
+          <td class="p-2 whitespace-nowrap font-bold ${isCancelled ? 'text-slate-500' : 'text-sky-300'}">${escapeHtml(String(item.carrier || item.boxType || ''))}</td>
+          <td class="p-2 whitespace-nowrap font-bold text-slate-100">${escapeHtml(String(item.recipientName || ''))}</td>
+          <td class="p-2 whitespace-nowrap font-mono text-[10px] text-slate-300">${escapeHtml(String(item.recipientPhone || ''))}</td>
+          <td class="p-2 max-w-xs truncate text-[10px] text-slate-300" title="${escapeHtml(String(item.recipientAddr || ''))}">${escapeHtml(String(item.recipientAddr || ''))}</td>
+          <td class="p-2 whitespace-nowrap font-bold text-amber-200">${escapeHtml(String(item.item || ''))} ${item.quantity ? escapeHtml(String(item.quantity)) + '건' : ''}</td>
+          <td class="p-2 max-w-xs truncate text-[10px] text-slate-400">${escapeHtml(String(item.memo || ''))}</td>
+          <td class="p-2 whitespace-nowrap text-center">
+            ${isCancelled
+              ? `<span class="text-[10px] text-rose-500 font-bold">취소됨</span>`
+              : `<button onclick="cancelOrderLogRow('${item.rowId || idx}')" class="bg-rose-950 hover:bg-rose-900 text-rose-300 border border-rose-800 px-2 py-0.5 rounded text-[10px] font-bold">🗑️ 취소</button>`
+            }
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function cancelOrderLogRow(rowId) {
+      if (!confirm("이 접수 건을 취소하시겠습니까?")) return;
+
+      const log = cachedOrderLogs.find((l, idx) => l.rowId === rowId || idx == rowId);
+      if (log) {
+        log.status = "취소됨";
+        log.cancelled = true;
+      }
+      renderOrderLogsTable();
+      cancelOrderToSheetAsync(rowId);
+      alert("해당 출고 건이 취소 처리되었습니다.");
     }
 
     function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
@@ -1049,8 +1249,11 @@
       });
     }
 
-    function selectItemChip(categoryName) {
-      currentSelectedCategory = categoryName;
+    function selectItemChip(itemName) {
+      currentSelectedCategory = itemName;
+      if (selectedCompany) {
+        selectedCompany.category = itemName;
+      }
       renderItemChips();
       updateSelectedCompanyDisplay();
       updateSummaryOutput();
@@ -1061,6 +1264,18 @@
       openModal("itemEditModal");
     }
 
+    let touchStartIdx = null;
+
+    function moveItemTagOrder(idx, delta) {
+      const newIdx = idx + delta;
+      if (newIdx < 0 || newIdx >= itemChips.length) return;
+      const item = itemChips.splice(idx, 1)[0];
+      itemChips.splice(newIdx, 0, item);
+      saveState();
+      renderItemChips();
+      renderItemTagManagerList();
+    }
+
     function renderItemTagManagerList() {
       const container = document.getElementById("itemTagManagerList");
       container.innerHTML = "";
@@ -1068,13 +1283,47 @@
       itemChips.forEach((chip, idx) => {
         const span = document.createElement("span");
         span.draggable = true;
+        span.dataset.index = idx;
         span.ondragstart = (e) => handleItemDragStart(e, idx);
         span.ondragover = (e) => handleItemDragOver(e);
         span.ondrop = (e) => handleItemDrop(e, idx);
-        span.className = "bg-slate-900 border border-slate-700 text-slate-200 text-xs px-2.5 py-1 rounded-lg flex items-center gap-1.5 font-bold cursor-grab active:cursor-grabbing hover:border-amber-400";
+
+        span.ontouchstart = (e) => {
+          touchStartIdx = idx;
+          span.classList.add("ring-2", "ring-amber-400");
+        };
+
+        span.ontouchmove = (e) => {
+          e.preventDefault();
+          const touch = e.touches[0];
+          const target = document.elementFromPoint(touch.clientX, touch.clientY);
+          const parentItem = target ? target.closest('[data-index]') : null;
+          if (parentItem) {
+            const targetIdx = parseInt(parentItem.dataset.index);
+            if (!isNaN(targetIdx) && touchStartIdx !== null && touchStartIdx !== targetIdx) {
+              const moved = itemChips.splice(touchStartIdx, 1)[0];
+              itemChips.splice(targetIdx, 0, moved);
+              touchStartIdx = targetIdx;
+              saveState();
+              renderItemChips();
+              renderItemTagManagerList();
+            }
+          }
+        };
+
+        span.ontouchend = () => {
+          touchStartIdx = null;
+          span.classList.remove("ring-2", "ring-amber-400");
+        };
+
+        span.className = "bg-slate-900 border border-slate-700 text-slate-200 text-xs px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 font-bold cursor-grab active:cursor-grabbing hover:border-amber-400 touch-none";
         span.innerHTML = `
           <span class="text-slate-500">::</span>
-          ${escapeHtml(chip)}
+          <span>${escapeHtml(chip)}</span>
+          <div class="flex items-center gap-0.5 ml-1 bg-slate-800 rounded px-1 py-0.5 border border-slate-700">
+            <button type="button" onclick="moveItemTagOrder(${idx}, -1)" class="text-amber-400 hover:text-amber-300 font-bold text-[10px] px-1">▲</button>
+            <button type="button" onclick="moveItemTagOrder(${idx}, 1)" class="text-amber-400 hover:text-amber-300 font-bold text-[10px] px-1">▼</button>
+          </div>
           <button type="button" onclick="removeItemTag(${idx})" class="text-rose-400 hover:text-rose-300 font-bold ml-1">✕</button>
         `;
         container.appendChild(span);
@@ -1173,7 +1422,27 @@
     function clearAllRecipients() {
       recipientCards = [];
       currentPhotoFile = null;
-      document.getElementById("photoPreviewArea").classList.add("hidden");
+      const photoPreviewArea = document.getElementById("photoPreviewArea");
+      if (photoPreviewArea) photoPreviewArea.classList.add("hidden");
+
+      const rawText = document.getElementById("rawTextInput");
+      if (rawText) rawText.value = "";
+
+      const senderName = document.getElementById("actualSenderNameInput");
+      if (senderName) senderName.value = "";
+
+      const senderPhone = document.getElementById("actualSenderPhoneInput");
+      if (senderPhone) senderPhone.value = "";
+
+      const actualSenderPanel = document.getElementById("actualSenderPanel");
+      if (actualSenderPanel) actualSenderPanel.classList.add("hidden");
+
+      const senderPanelIcon = document.getElementById("senderPanelIcon");
+      if (senderPanelIcon) senderPanelIcon.innerText = "▼";
+
+      const candidateStoresContainer = document.getElementById("candidateStoresContainer");
+      if (candidateStoresContainer) candidateStoresContainer.classList.add("hidden");
+
       addRecipientCard();
     }
 
@@ -1235,9 +1504,12 @@
       const card = recipientCards.find(c => c.id === cardId);
       if (!card) return;
 
-      card.name = vip.name;
-      card.phone = vip.phone;
-      card.address = vip.address;
+      // Atomic overwrite of all fields to prevent lingering previous values
+      card.name = vip.name || "";
+      card.phone = vip.phone || "";
+      card.address = vip.address || "";
+      card.memo = "";
+      card.itemOverride = "";
 
       const dropdownElem = document.getElementById(`autocomplete_${cardId}`);
       if (dropdownElem) dropdownElem.classList.add("hidden");
@@ -1339,11 +1611,14 @@
         return alert("우편번호 서비스를 불러올 수 없습니다.");
       }
 
+      const card = recipientCards.find(c => c.id === cardId);
+      const currentAddress = card ? card.address.trim() : "";
+
       const element = document.getElementById('postcode-embed-container');
       const layer = document.getElementById('postcode-layer');
       element.innerHTML = "";
 
-      new daum.Postcode({
+      const postcodeOptions = {
         oncomplete: function(data) {
           const fullAddr = data.roadAddress || data.jibunAddress;
           updateCardField(cardId, 'address', fullAddr);
@@ -1356,7 +1631,14 @@
         },
         width: '100%',
         height: '100%'
-      }).embed(element);
+      };
+
+      const postcodeInstance = new daum.Postcode(postcodeOptions);
+      if (currentAddress) {
+        postcodeInstance.embed(element, { q: currentAddress });
+      } else {
+        postcodeInstance.embed(element);
+      }
 
       layer.classList.remove('hidden');
     }
@@ -1369,11 +1651,17 @@
       const card = recipientCards.find(c => c.id === cardId);
       if (!card) return;
 
-      const idx = card.items.findIndex(it => it.type === typeId);
-      if (idx >= 0) {
-        if (card.items.length > 1) card.items.splice(idx, 1);
+      if (!isMultiMode) {
+        // Single mode: Radio behavior - strictly replace with the selected box type
+        card.items = [{ type: typeId, count: 1 }];
       } else {
-        card.items.push({ type: typeId, count: 1 });
+        // Multi mode: Free multi-selection toggle
+        const idx = card.items.findIndex(it => it.type === typeId);
+        if (idx >= 0) {
+          if (card.items.length > 1) card.items.splice(idx, 1);
+        } else {
+          card.items.push({ type: typeId, count: 1 });
+        }
       }
       renderRecipientCards();
       updateSummaryOutput();
@@ -1588,12 +1876,12 @@
 
           if (isCod) {
             const codNum = it.type.replace(/[^0-9]/g, '');
-            const codFormatted = codNum ? `착불 ${codNum}원` : it.type;
-            boxTypeParts.push(`한진 ${codFormatted} ${it.count}건`);
+            const codFormatted = codNum ? `착불 ${codNum}` : it.type;
+            boxTypeParts.push(`${codFormatted} ${it.count}건`);
           } else if (it.type === "우체국") {
-            boxTypeParts.push(`우체국 선불 ${it.count}건`);
+            boxTypeParts.push(`우체국 ${it.count}건`);
           } else {
-            boxTypeParts.push(`한진 선불 ${it.type} ${it.count}건`);
+            boxTypeParts.push(`${it.type} ${it.count}건`);
           }
         });
 
@@ -1631,11 +1919,73 @@
       if (currentPhotoFile) generateWatermarkCanvas(fullOutput);
     }
 
+    function validateActualSenderGuard() {
+      const actualSenderPanel = document.getElementById("actualSenderPanel");
+      const isPanelOpen = actualSenderPanel && !actualSenderPanel.classList.contains("hidden");
+      const sNameInput = document.getElementById("actualSenderNameInput");
+      const sPhoneInput = document.getElementById("actualSenderPhoneInput");
+
+      const sName = sNameInput ? sNameInput.value.trim() : "";
+      const sPhone = sPhoneInput ? sPhoneInput.value.trim() : "";
+
+      if (isPanelOpen || sName) {
+        if (!sPhone) {
+          if (sPhoneInput) {
+            sPhoneInput.classList.add("border-rose-500", "ring-2", "ring-rose-500");
+            sPhoneInput.focus();
+          }
+          alert("🚨 발송인 연락처는 필수입니다.");
+          return false;
+        } else {
+          if (sPhoneInput) {
+            sPhoneInput.classList.remove("border-rose-500", "ring-2", "ring-rose-500");
+          }
+          if (sName) {
+            learnNewSender(sName, sPhone);
+          }
+        }
+      }
+      return true;
+    }
+
+    function autoLearnRecipients() {
+      recipientCards.forEach(card => {
+        if (!card.name.trim()) return;
+        const normPhone = card.phone.trim();
+        const normAddr = card.address.trim();
+
+        const existingIdx = vipList.findIndex(v => v.name.trim() === card.name.trim() || (normPhone && v.phone.replace(/[^0-9]/g, '') === normPhone.replace(/[^0-9]/g, '')));
+
+        if (existingIdx >= 0) {
+          const v = vipList[existingIdx];
+          v.name = card.name.trim();
+          if (normPhone) v.phone = normPhone;
+          if (normAddr) v.address = normAddr;
+          if (selectedCompany && !v.storeHistory.includes(selectedCompany.name)) {
+            v.storeHistory.push(selectedCompany.name);
+          }
+        } else {
+          vipList.unshift({
+            name: card.name.trim(),
+            phone: normPhone,
+            address: normAddr,
+            storeHistory: selectedCompany ? [selectedCompany.name] : []
+          });
+        }
+      });
+      saveState();
+      renderVipList();
+    }
+
     function copySummaryText() {
+      if (!validateActualSenderGuard()) return;
+
       const text = document.getElementById("summaryOutput").value;
       navigator.clipboard.writeText(text).then(() => {
         alert("접수 요약 텍스트가 복사되었습니다!");
       }).catch(err => alert("복사 실패: " + err));
+
+      autoLearnRecipients();
 
       // Trigger Google Sheet async order logging
       recipientCards.forEach(card => {
@@ -1707,6 +2057,7 @@
       saveState();
       renderCompanyAccordion();
       renderFolderManager();
+      saveStoreToSheetAsync(updatedComp);
       closeModal("companyEditModal");
     }
 
@@ -1722,6 +2073,38 @@
         renderCompanyAccordion();
         renderFolderManager();
       }
+    }
+
+    function openCompanyAddModal() {
+      const compName = prompt("추가할 신규 업체의 공식 풀네임을 입력하세요:");
+      if (!compName || !compName.trim()) return;
+
+      const compPhone = prompt(`[${compName}]의 대표 연락처를 입력하세요 (선택):`) || "";
+      const compItem = prompt(`[${compName}]의 기본 품목을 입력하세요 (예: 고구마, 건어물, 과일):`) || "일반";
+
+      const newCompany = {
+        shortName: compName.trim(),
+        name: compName.trim(),
+        phone: compPhone.trim(),
+        category: compItem.trim(),
+        defaultBox: "B"
+      };
+
+      if (folders.length === 0) {
+        folders.push({ id: "f_default", name: "가락몰 - 건어물", companies: [] });
+      }
+
+      folders[0].companies.push(newCompany);
+      selectedCompany = newCompany;
+      currentSelectedCategory = newCompany.category;
+
+      saveState();
+      renderCompanyAccordion();
+      renderFolderManager();
+      updateSelectedCompanyDisplay();
+      updateSummaryOutput();
+      saveStoreToSheetAsync(newCompany);
+      alert(`✅ [${newCompany.name}] 신규 업체가 성공적으로 등록되었습니다!`);
     }
 
     function editFolderName(fIdx) {
