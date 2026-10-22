@@ -40,12 +40,14 @@
     <div class="flex items-center space-x-2">
       <h1 onclick="window.open('https://focus.hanjin.com', '_blank', 'noopener,noreferrer')" title="한진포커스 이동" class="text-base font-black tracking-tight flex items-center gap-1.5 cursor-pointer hover:opacity-90 active:scale-95 transition">
         <span>📦</span> <span>우정물류 택배 접수 v4.0</span>
-        <span class="text-[10px] text-sky-200 font-normal bg-sky-800/80 px-1.5 py-0.5 rounded border border-sky-500/50 ml-1">(터치시 한진포커스 이동 ↗)</span>
       </h1>
     </div>
     <div class="flex items-center space-x-1.5">
+      <button onclick="openModal('aiChatModal')" class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs px-2.5 py-1.5 rounded-lg border border-amber-300 flex items-center gap-1 active:scale-95 transition">
+        <span>💬 AI비서</span>
+      </button>
       <button onclick="openModal('geminiModal')" class="bg-sky-800 hover:bg-sky-900 text-xs px-2.5 py-1.5 rounded-lg border border-sky-500 flex items-center gap-1 font-semibold">
-        <span>🤖 AI 설정</span>
+        <span>🤖 AI설정</span>
       </button>
       <button onclick="openModal('settingsModal')" title="미니 설정" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm p-1.5 rounded-lg border border-slate-600 flex items-center justify-center active:scale-95 transition">
         ⚙️
@@ -92,12 +94,12 @@
 
         <div class="grid grid-cols-2 gap-2">
           <label class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs py-2.5 px-3 rounded-xl font-bold cursor-pointer flex justify-center items-center gap-1.5 shadow active:scale-[0.99] transition">
-            <span>🖼️</span> [🖼️ 사진불러오기]
+            <span>🖼️</span> <span>사진불러오기</span>
             <input type="file" id="gallery-file-input" accept="image/*,image/jpeg,image/png,image/heic,image/webp" multiple onchange="handlePhotoSelect(event)" class="hidden">
           </label>
 
           <label class="bg-sky-600 hover:bg-sky-700 text-white text-xs py-2.5 px-3 rounded-xl font-bold cursor-pointer flex justify-center items-center gap-1.5 shadow active:scale-[0.99] transition">
-            <span>📷</span> [📷 사진촬영]
+            <span>📷</span> <span>사진촬영</span>
             <input type="file" id="camera-file-input" accept="image/*" capture="environment" onchange="handlePhotoSelect(event)" class="hidden">
           </label>
         </div>
@@ -464,6 +466,38 @@
       <div class="flex justify-end gap-2 pt-2">
         <button onclick="closeModal('companyEditModal')" class="bg-slate-700 text-xs px-3 py-2 rounded-lg text-slate-300">취소</button>
         <button onclick="saveCompanyEditForm()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-bold px-4 py-2 rounded-lg">저장하기</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- AI Logistics Assistant Modal (💬 우정물류 AI 비서) -->
+  <div id="aiChatModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-3 hidden">
+    <div class="bg-slate-800 border border-slate-700 rounded-2xl max-w-lg w-full h-[85vh] flex flex-col shadow-2xl overflow-hidden">
+      <!-- Header -->
+      <div class="p-3 bg-slate-900 border-b border-slate-700 flex justify-between items-center shrink-0">
+        <h3 class="text-xs font-bold text-amber-400 flex items-center gap-1.5">
+          <span>💬</span> 우정물류 AI 비서 <span class="text-[10px] text-slate-400 font-mono">(Gemini 2.0 Flash)</span>
+        </h3>
+        <button onclick="closeModal('aiChatModal')" class="text-slate-400 hover:text-white text-lg font-bold">&times;</button>
+      </div>
+
+      <!-- Messages Scroll Area -->
+      <div id="aiChatMessages" class="flex-1 p-3 overflow-y-auto space-y-2.5 bg-slate-950/80 text-xs">
+        <div class="flex justify-start">
+          <div class="bg-slate-900 border border-slate-700 text-slate-200 p-2.5 rounded-2xl max-w-[85%] leading-relaxed">
+            안녕하세요! 가락몰 우정물류 AI 비서입니다. 출고 수량, 주소, 전화번호, 거래처 정보를 무엇이든 물어보세요.
+          </div>
+        </div>
+      </div>
+
+      <!-- Input Area -->
+      <div class="p-2.5 bg-slate-900 border-t border-slate-700 shrink-0">
+        <div class="flex gap-2">
+          <input type="text" id="aiChatInput" onkeydown="handleAiChatKeyDown(event)" placeholder="질문을 입력하세요 (엔터 시 전송)..." class="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500">
+          <button onclick="sendAiChatMessage()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs px-4 py-2 rounded-xl shadow border border-amber-300 active:scale-95 transition">
+            전송
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -1063,6 +1097,127 @@
       }
     }
 
+    function handleAiChatKeyDown(e) {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        sendAiChatMessage();
+      }
+    }
+
+    async function sendAiChatMessage() {
+      const input = document.getElementById("aiChatInput");
+      const msgContainer = document.getElementById("aiChatMessages");
+      if (!input || !msgContainer) return;
+
+      const userMsg = input.value.trim();
+      if (!userMsg) return;
+
+      input.value = "";
+
+      // Append user bubble
+      const userBubble = document.createElement("div");
+      userBubble.className = "flex justify-end";
+      userBubble.innerHTML = `
+        <div class="bg-indigo-600 text-white p-2.5 rounded-2xl max-w-[85%] leading-relaxed font-semibold">
+          ${escapeHtml(userMsg)}
+        </div>
+      `;
+      msgContainer.appendChild(userBubble);
+
+      // Append temporary loading AI bubble
+      const loadingId = "loading_" + Date.now();
+      const loadingBubble = document.createElement("div");
+      loadingBubble.id = loadingId;
+      loadingBubble.className = "flex justify-start";
+      loadingBubble.innerHTML = `
+        <div class="bg-slate-900 border border-slate-700 text-amber-300 p-2.5 rounded-2xl max-w-[85%] leading-relaxed flex items-center gap-2">
+          <div class="animate-spin rounded-full h-3 w-3 border-2 border-amber-400 border-t-transparent"></div>
+          <span>답변 작성 중...</span>
+        </div>
+      `;
+      msgContainer.appendChild(loadingBubble);
+      msgContainer.scrollTop = msgContainer.scrollHeight;
+
+      if (!geminiApiKey || !geminiApiKey.startsWith("AIzaSy")) {
+        document.getElementById(loadingId).remove();
+        const errBubble = document.createElement("div");
+        errBubble.className = "flex justify-start";
+        errBubble.innerHTML = `
+          <div class="bg-rose-950/90 border border-rose-600 text-rose-300 p-2.5 rounded-2xl max-w-[85%] leading-relaxed font-bold">
+            🔴 상단의 🤖 AI설정에서 무료 Gemini API 키를 먼저 등록해주세요!
+          </div>
+        `;
+        msgContainer.appendChild(errBubble);
+        msgContainer.scrollTop = msgContainer.scrollHeight;
+        return;
+      }
+
+      // Collect live app state for prompt
+      const allStores = [];
+      folders.forEach(f => {
+        f.companies.forEach(c => {
+          allStores.push({ name: c.name, phone: c.phone || "", defaultItem: c.category || "", carrierSpec: c.carrierSpec || c.defaultBox || "B", location: f.name });
+        });
+      });
+
+      const systemInstruction = `당신은 가락몰 우정물류의 초단답형 현장 물류 비서입니다.
+아래 제공되는 실시간 데이터만을 바탕으로 사장님의 질문에 1초 만에 답변하세요.
+
+[절대 준수 규칙]:
+1. 인사말("안녕하세요", "사장님", "좋은 하루 되세요" 등) 일절 금지.
+2. 미사여구 및 맺음말("도움이 되셨길 바랍니다", "더 필요하신 점이 있으신가요?" 등) 일절 금지.
+3. 오직 질문받은 핵심 수치, 주소, 전화번호, 품목, 규격만을 1~2줄 이내로 간결하게 단답형 브리핑할 것.
+4. 없는 정보는 지어내지 말고 "등록된 내역 없음"으로 단답 처리할 것.
+
+[등록된 가락몰 거래처 50곳]:
+${JSON.stringify(allStores)}
+
+[오늘 실시간 출고 장부]:
+${JSON.stringify(cachedOrderLogs.slice(0, 30))}
+
+[수취인 출고 DB (단골)]:
+${JSON.stringify(vipList.slice(0, 50))}`;
+
+      try {
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [
+              { role: "user", parts: [{ text: `${systemInstruction}\n\n질문: ${userMsg}` }] }
+            ]
+          })
+        });
+
+        const resData = await response.json();
+        document.getElementById(loadingId)?.remove();
+
+        let aiAnswer = resData?.candidates?.[0]?.content?.parts?.[0]?.text || "등록된 내역 없음";
+        aiAnswer = aiAnswer.trim();
+
+        const aiBubble = document.createElement("div");
+        aiBubble.className = "flex justify-start";
+        aiBubble.innerHTML = `
+          <div class="bg-slate-900 border border-slate-700 text-slate-100 p-2.5 rounded-2xl max-w-[85%] leading-relaxed font-bold whitespace-pre-line">
+            ${escapeHtml(aiAnswer)}
+          </div>
+        `;
+        msgContainer.appendChild(aiBubble);
+        msgContainer.scrollTop = msgContainer.scrollHeight;
+      } catch (err) {
+        document.getElementById(loadingId)?.remove();
+        const errBubble = document.createElement("div");
+        errBubble.className = "flex justify-start";
+        errBubble.innerHTML = `
+          <div class="bg-rose-950/90 border border-rose-600 text-rose-300 p-2.5 rounded-2xl max-w-[85%] leading-relaxed font-bold">
+            ❌ AI 답변 호출 실패: ${escapeHtml(err.message)}
+          </div>
+        `;
+        msgContainer.appendChild(errBubble);
+        msgContainer.scrollTop = msgContainer.scrollHeight;
+      }
+    }
+
     // Speech Recognition
     function toggleVoiceRecognition() {
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -1203,6 +1358,8 @@
     window.confirmAndSyncAllToSheet = confirmAndSyncAllToSheet;
     window.handleExcelUpload = handleExcelUpload;
     window.clearLocalCacheAndRestart = clearLocalCacheAndRestart;
+    window.sendAiChatMessage = sendAiChatMessage;
+    window.handleAiChatKeyDown = handleAiChatKeyDown;
     window.toggleVoiceRecognition = toggleVoiceRecognition;
     window.switchTab = switchTab;
     window.openModal = openModal;
