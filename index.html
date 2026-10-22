@@ -40,7 +40,10 @@
         <span>📦</span> 우정물류 택배 접수 v3.5
       </h1>
     </div>
-    <div class="flex items-center space-x-2">
+    <div class="flex items-center space-x-1.5">
+      <button onclick="triggerManualSync()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-2.5 py-1.5 rounded-lg border border-emerald-400 flex items-center gap-1 font-bold shadow active:scale-95 transition">
+        <span>🔄</span><span>동기화</span>
+      </button>
       <button onclick="openModal('geminiModal')" class="bg-sky-800 hover:bg-sky-900 text-xs px-2.5 py-1.5 rounded-lg border border-sky-500 flex items-center gap-1 font-semibold">
         <span>🤖 AI 설정</span>
       </button>
@@ -487,7 +490,7 @@
 
   <!-- JavaScript Engine v3.5 & Google Sheet Integration -->
   <script type="module">
-    import { syncCustomersFromSheet, logOrderToSheetAsync } from './src/services/googleSheetService.js';
+    import { fetchMasterDataFromSheet, resolveCategory, logOrderToSheetAsync } from './src/services/googleSheetService.js';
 
     const DEFAULT_FOLDERS = [
       {
@@ -628,6 +631,71 @@
       localStorage.setItem("woojung_geminiKey", geminiApiKey);
     }
 
+    // Manual Force Sync with Google Sheets
+    async function triggerManualSync() {
+      const data = await fetchMasterDataFromSheet();
+      if (!data) {
+        return alert("구글 시트 연동 실패: 인터넷 연결 상태나 GAS 배포 설정을 확인하세요.");
+      }
+
+      const { stores, customers } = data;
+
+      if (stores && stores.length > 0) {
+        const folderMap = {};
+        stores.forEach(s => {
+          const folderName = s.category || "가락몰 - 건어물";
+          if (!folderMap[folderName]) folderMap[folderName] = [];
+
+          folderMap[folderName].push({
+            shortName: s.name,
+            name: s.name,
+            category: s.defaultItem || "일반",
+            phone: s.phone || s.location || s.name,
+            defaultBox: s.carrierSpec || "B"
+          });
+        });
+
+        folders = Object.keys(folderMap).map((fname, idx) => ({
+          id: `f_sheet_${idx}`,
+          name: fname,
+          companies: folderMap[fname]
+        }));
+
+        folders.forEach(f => { openAccordionMap[f.id] = true; });
+        if (folders.length > 0 && folders[0].companies.length > 0) {
+          selectedCompany = folders[0].companies[0];
+          currentSelectedCategory = selectedCompany.category;
+        }
+      }
+
+      if (customers && customers.length > 0) {
+        customers.forEach(sc => {
+          const idx = vipList.findIndex(v => v.name === sc.name || (v.phone && v.phone === sc.phone));
+          if (idx >= 0) {
+            vipList[idx].address = sc.address || vipList[idx].address;
+            vipList[idx].storeHistory = Array.from(new Set([...(vipList[idx].storeHistory || []), ...(sc.usedStores || [])]));
+          } else {
+            vipList.push({
+              name: sc.name,
+              phone: sc.phone,
+              address: sc.address,
+              storeHistory: sc.usedStores || []
+            });
+          }
+        });
+      }
+
+      saveState();
+      renderCompanyAccordion();
+      renderItemChips();
+      updateSelectedCompanyDisplay();
+      renderVipList();
+      renderFolderManager();
+
+      const syncTime = localStorage.getItem("cached_last_sync") || new Date().toLocaleTimeString("ko-KR");
+      alert(`✅ 구글 시트 동기화 완료!\n- 동기화 시각: ${syncTime}\n- 업체: ${stores ? stores.length : 0}곳\n- 단골: ${customers ? customers.length : 0}명`);
+    }
+
     // Speech Recognition
     function toggleVoiceRecognition() {
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -712,29 +780,6 @@
       }
     }
 
-    // Google Sheets Async Sync
-    async function syncSheetData() {
-      const sheetCustomers = await syncCustomersFromSheet();
-      if (sheetCustomers && Array.isArray(sheetCustomers)) {
-        sheetCustomers.forEach(sc => {
-          const idx = vipList.findIndex(v => v.name === sc.name || v.phone === sc.phone);
-          if (idx >= 0) {
-            vipList[idx].address = sc.address || vipList[idx].address;
-            vipList[idx].storeHistory = Array.from(new Set([...vipList[idx].storeHistory, ...sc.usedStores]));
-          } else {
-            vipList.push({
-              name: sc.name,
-              phone: sc.phone,
-              address: sc.address,
-              storeHistory: sc.usedStores || []
-            });
-          }
-        });
-        saveState();
-        renderVipList();
-      }
-    }
-
     window.addEventListener("DOMContentLoaded", () => {
       loadAppState();
       renderCompanyAccordion();
@@ -748,15 +793,13 @@
       renderVipList();
       renderFolderManager();
 
-      // Trigger Google Sheet async sync
-      syncSheetData();
-
       if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('sw.js').catch(() => {});
       }
     });
 
     // Make global handlers for window
+    window.triggerManualSync = triggerManualSync;
     window.toggleVoiceRecognition = toggleVoiceRecognition;
     window.switchTab = switchTab;
     window.openModal = openModal;
