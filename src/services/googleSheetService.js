@@ -1,4 +1,4 @@
-const GAS_URL = "https://script.google.com/macros/s/AKfycbz1GvHqsae_JspPAJpAGqX5Fs9hbhqrvW9QvnNvGzLBPdil3ckutmR_Xk0SUSeR4kKa_g/exec";
+const GAS_URL = "https://script.google.com/macros/s/AKfycbxSYVAFQw1x_YyfQ6nkk16v5s83wacdVOTiMHJSsU5S6Z4qvLNrcxHAY0aqZsQWaLU64A/exec";
 
 // 품목/위치/카테고리 텍스트 기반 4대 메인 폴더 자동 결정 함수
 export function resolveCategory(rawCategory, item, location) {

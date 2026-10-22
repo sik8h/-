@@ -1,4 +1,4 @@
-const GAS_URL = "https://script.google.com/macros/s/AKfycbz1GvHqsae_JspPAJpAGqX5Fs9hbhqrvW9QvnNvGzLBPdil3ckutmR_Xk0SUSeR4kKa_g/exec";
+const GAS_URL = "https://script.google.com/macros/s/AKfycbxSYVAFQw1x_YyfQ6nkk16v5s83wacdVOTiMHJSsU5S6Z4qvLNrcxHAY0aqZsQWaLU64A/exec";
 
 export interface MasterStore {
   code: string;
@@ -23,16 +23,16 @@ export function resolveCategory(rawCategory: string, item: string, location: str
   const combined = `${rawCategory} ${item} ${location}`.toLowerCase();
 
   if (combined.match(/청과|과일|사과|배|감|귤|딸기|고구마|감자|백운|억기|천왕|16번|52번|매점/)) {
-    return "청과/고구마";
+    return "가락몰 - 청과/고구마";
   }
   if (combined.match(/건어물|김|미역|멸치|굴비|황태|오징어|수도|대산|영화|성진|성광|상아|미나/)) {
-    return "건어물";
+    return "가락몰 - 건어물";
   }
   if (combined.match(/야채|채소|양념|고추|마늘|당근|부추|쌈|대일|율리|인화|창성|호남/)) {
-    return "야채/양념";
+    return "가락몰 - 야채/양념";
   }
   if (combined.match(/수산|활어|축산|정육|한우|김치|생강|일호|유일|자매|또순|신창|삼진/)) {
-    return "수산/정육/김치";
+    return "가락몰 - 수산/축산/기타";
   }
   return "기타";
 }

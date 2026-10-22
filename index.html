@@ -120,15 +120,19 @@
           <label class="text-xs font-bold text-amber-400 flex items-center gap-1">
             <span>👤</span> [3] 수취인 카드 작성 & 단골 DB 불러오기
           </label>
+          <label class="flex items-center gap-1.5 cursor-pointer text-xs font-bold text-sky-400 bg-slate-900 px-2.5 py-1 rounded-xl border border-slate-700">
+            <input type="checkbox" id="multiModeToggle" onchange="toggleMultiMode(this.checked)" class="w-4 h-4 text-sky-500 rounded border-slate-700 focus:ring-sky-500">
+            <span>☑️ 다건(여러곳) 접수</span>
+          </label>
         </div>
 
         <div id="recipientsContainer" class="space-y-3">
           <!-- Dynamic recipient cards -->
         </div>
 
-        <div class="mt-2 flex gap-2">
+        <div id="addRecipientBtnContainer" class="hidden mt-2 flex gap-2">
           <button onclick="addRecipientCard()" class="flex-1 bg-slate-700 hover:bg-slate-600 text-amber-300 font-bold text-xs py-2.5 px-3 rounded-xl border border-amber-500/30 flex justify-center items-center gap-1 shadow">
-            <span>➕</span> 수취인 추가
+            <span>➕</span> 수취인 카드 추가
           </button>
           <button onclick="clearAllRecipients()" class="bg-rose-950 hover:bg-rose-900 text-rose-300 text-xs py-2.5 px-3 rounded-xl border border-rose-800/50">
             전체 초기화
@@ -357,7 +361,7 @@
   <div id="itemEditModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
     <div class="bg-slate-800 border border-slate-700 rounded-2xl max-w-md w-full p-4 shadow-2xl space-y-3">
       <div class="flex justify-between items-center border-b border-slate-700 pb-2">
-        <h3 class="text-xs font-bold text-amber-400">✏️ 품목 태그 편집</h3>
+        <h3 class="text-xs font-bold text-amber-400">✏️ 품목 태그 편집 (터치 드래그로 순서 변경)</h3>
         <button onclick="closeModal('itemEditModal')" class="text-slate-400 hover:text-white text-lg">&times;</button>
       </div>
       <div id="itemTagManagerList" class="flex flex-wrap gap-1.5 max-h-60 overflow-y-auto p-1">
@@ -586,9 +590,7 @@
       { id: "착불 3000원", label: "착불 3천" },
       { id: "착불 4000원", label: "착불 4천" },
       { id: "착불 5000원", label: "착불 5천" },
-      { id: "착불 5300원", label: "착불 5.3천" },
-      { id: "착불 6000원", label: "착불 6천" },
-      { id: "착불 8000원", label: "착불 8천" }
+      { id: "착불 6000원", label: "착불 6천" }
     ];
 
     let folders = [];
@@ -597,6 +599,7 @@
     let unpaidLedger = {};
     let itemChips = [];
     let geminiApiKey = "";
+    let isMultiMode = false;
 
     let selectedCompany = null;
     let currentSelectedCategory = "";
@@ -605,6 +608,7 @@
     let openAccordionMap = {};
     let speechRecognition = null;
     let isListening = false;
+    let draggedItemIdx = null;
 
     function loadAppState() {
       const savedFolders = localStorage.getItem("woojung_folders");
@@ -619,7 +623,7 @@
       const savedUnpaid = localStorage.getItem("woojung_unpaidLedger");
       unpaidLedger = savedUnpaid ? JSON.parse(savedUnpaid) : {};
 
-      const savedChips = localStorage.getItem("woojung_itemChips");
+      const savedChips = localStorage.getItem("custom_items") || localStorage.getItem("woojung_itemChips");
       itemChips = savedChips ? JSON.parse(savedChips) : [...DEFAULT_ITEM_CHIPS];
 
       geminiApiKey = localStorage.getItem("woojung_geminiKey") || "";
@@ -636,8 +640,24 @@
       localStorage.setItem("woojung_vipList", JSON.stringify(vipList));
       localStorage.setItem("woojung_history", JSON.stringify(historyList));
       localStorage.setItem("woojung_unpaidLedger", JSON.stringify(unpaidLedger));
+      localStorage.setItem("custom_items", JSON.stringify(itemChips));
       localStorage.setItem("woojung_itemChips", JSON.stringify(itemChips));
       localStorage.setItem("woojung_geminiKey", geminiApiKey);
+    }
+
+    function toggleMultiMode(enabled) {
+      isMultiMode = enabled;
+      const addBtnContainer = document.getElementById("addRecipientBtnContainer");
+      if (isMultiMode) {
+        addBtnContainer.classList.remove("hidden");
+      } else {
+        addBtnContainer.classList.add("hidden");
+        if (recipientCards.length > 1) {
+          recipientCards = [recipientCards[0]];
+        }
+      }
+      renderRecipientCards();
+      updateSummaryOutput();
     }
 
     // Manual Force Sync with Google Sheets
@@ -767,7 +787,6 @@
       if (text.includes("착불 오천") || text.includes("착불 5000") || text.includes("착불 5천")) matchedBox = "착불 5000원";
       else if (text.includes("착불 사천") || text.includes("착불 4000") || text.includes("착불 4천")) matchedBox = "착불 4000원";
       else if (text.includes("착불 삼천") || text.includes("착불 3000") || text.includes("착불 3천")) matchedBox = "착불 3000원";
-      else if (text.includes("착불 오천삼백") || text.includes("착불 5300")) matchedBox = "착불 5300원";
       else if (text.includes("착불 육천") || text.includes("착불 6000") || text.includes("착불 6천")) matchedBox = "착불 6000원";
       else if (text.includes("우체국")) matchedBox = "우체국";
       else if (text.includes("비") || text.includes("삐") || text.includes("B")) matchedBox = "B";
@@ -808,6 +827,7 @@
     });
 
     // Make global handlers for window
+    window.toggleMultiMode = toggleMultiMode;
     window.triggerManualSync = triggerManualSync;
     window.toggleVoiceRecognition = toggleVoiceRecognition;
     window.switchTab = switchTab;
@@ -852,6 +872,9 @@
     window.removeCompanyFromFolder = removeCompanyFromFolder;
     window.selectVipCustomerForCard = selectVipCustomerForCard;
     window.updateVendorPhoneManual = updateVendorPhoneManual;
+    window.handleItemDragStart = handleItemDragStart;
+    window.handleItemDragOver = handleItemDragOver;
+    window.handleItemDrop = handleItemDrop;
 
     function switchTab(tabId) {
       ['tabOrder', 'tabUnpaid', 'tabVip', 'tabFolder'].forEach(id => {
@@ -1044,13 +1067,41 @@
 
       itemChips.forEach((chip, idx) => {
         const span = document.createElement("span");
-        span.className = "bg-slate-900 border border-slate-700 text-slate-200 text-xs px-2.5 py-1 rounded-lg flex items-center gap-1.5 font-bold";
+        span.draggable = true;
+        span.ondragstart = (e) => handleItemDragStart(e, idx);
+        span.ondragover = (e) => handleItemDragOver(e);
+        span.ondrop = (e) => handleItemDrop(e, idx);
+        span.className = "bg-slate-900 border border-slate-700 text-slate-200 text-xs px-2.5 py-1 rounded-lg flex items-center gap-1.5 font-bold cursor-grab active:cursor-grabbing hover:border-amber-400";
         span.innerHTML = `
+          <span class="text-slate-500">::</span>
           ${escapeHtml(chip)}
-          <button type="button" onclick="removeItemTag(${idx})" class="text-rose-400 hover:text-rose-300 font-bold">✕</button>
+          <button type="button" onclick="removeItemTag(${idx})" class="text-rose-400 hover:text-rose-300 font-bold ml-1">✕</button>
         `;
         container.appendChild(span);
       });
+    }
+
+    function handleItemDragStart(e, idx) {
+      draggedItemIdx = idx;
+      e.dataTransfer.effectAllowed = "move";
+    }
+
+    function handleItemDragOver(e) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
+    }
+
+    function handleItemDrop(e, targetIdx) {
+      e.preventDefault();
+      if (draggedItemIdx === null || draggedItemIdx === targetIdx) return;
+
+      const item = itemChips.splice(draggedItemIdx, 1)[0];
+      itemChips.splice(targetIdx, 0, item);
+      draggedItemIdx = null;
+
+      saveState();
+      renderItemChips();
+      renderItemTagManagerList();
     }
 
     function addCustomItemFromModal() {
@@ -1299,6 +1350,9 @@
           const addrInput = document.getElementById(`addr_${cardId}`);
           if (addrInput) addrInput.value = fullAddr;
           closePostcodeLayer();
+
+          const memoInput = document.getElementById(`memo_${cardId}`);
+          if (memoInput) memoInput.focus();
         },
         width: '100%',
         height: '100%'
@@ -1349,7 +1403,7 @@
         const cardElem = document.createElement("div");
         cardElem.className = "bg-slate-900 p-3 rounded-xl border border-slate-700 shadow-md relative space-y-2";
 
-        let boxTypeBtnsHtml = `<div class="grid grid-cols-6 sm:grid-cols-12 gap-1 mb-1.5">`;
+        let boxTypeBtnsHtml = `<div class="grid grid-cols-5 sm:grid-cols-10 gap-1 mb-1.5">`;
         BOX_TYPE_OPTIONS.forEach(opt => {
           const isSel = card.items.some(it => it.type === opt.id);
           const isCod = opt.id.startsWith("착불");
@@ -1391,9 +1445,7 @@
               <button type="button" onclick="switchTab('tabVip')" class="text-[10px] bg-amber-950 text-amber-300 px-2 py-0.5 rounded border border-amber-700 font-bold">
                 ⭐ 단골 DB 불러오기
               </button>
-              <button type="button" onclick="removeRecipientCard('${card.id}')" class="text-slate-400 hover:text-rose-400 text-xs px-1.5 py-0.5 rounded">
-                ✕ 삭제
-              </button>
+              ${isMultiMode ? `<button type="button" onclick="removeRecipientCard('${card.id}')" class="text-slate-400 hover:text-rose-400 text-xs px-1.5 py-0.5 rounded">✕ 삭제</button>` : ''}
             </div>
           </div>
 
@@ -1422,7 +1474,7 @@
           </div>
 
           <div>
-            <label class="block text-[10px] text-slate-400 mb-1">택배 규격 선택 (A~E, 우체국 / 착불 3천~8천)</label>
+            <label class="block text-[10px] text-slate-400 mb-1">택배 규격 선택 (A~E, 우체국 / 착불 3천~6천)</label>
             ${boxTypeBtnsHtml}
             ${selectedItemsHtml}
           </div>
@@ -1433,8 +1485,8 @@
               <input type="text" value="${escapeHtml(card.itemOverride)}" oninput="updateCardField('${card.id}', 'itemOverride', this.value)" placeholder="예: 황태채, 멸치" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-1.5 text-xs text-slate-200">
             </div>
             <div>
-              <label class="block text-[10px] text-slate-400 mb-0.5">금액/메모 (선택)</label>
-              <input type="text" value="${escapeHtml(card.memo)}" oninput="updateCardField('${card.id}', 'memo', this.value)" placeholder="예: 특이사항 메모" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-1.5 text-xs text-amber-200">
+              <label class="block text-[10px] text-slate-400 mb-0.5">금액/배송메모 (선택)</label>
+              <input type="text" id="memo_${card.id}" value="${escapeHtml(card.memo)}" oninput="updateCardField('${card.id}', 'memo', this.value)" placeholder="예: 문앞배송, 부재시 경비실" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-1.5 text-xs text-amber-200">
             </div>
           </div>
         `;
@@ -1551,11 +1603,13 @@
         }
 
         const boxStr = boxTypeParts.join(", ");
-        const lineCommand = `${boxStr} ${itemCategory} ${selectedCompany.name}`;
+        const memoStr = card.memo.trim() ? ` (${card.memo.trim()})` : '';
+        const lineCommand = `${boxStr} ${itemCategory} ${selectedCompany.name}${memoStr}`;
 
         if (formatMode === 'full_addr') {
+          const addrMemoStr = card.memo.trim() ? ` (배송메모: ${card.memo.trim()})` : '';
           bodyLines.push(`• 받는사람: ${card.name.trim() || '미입력'} (${card.phone.trim() || '미입력'})`);
-          bodyLines.push(`• 받는주소: ${card.address.trim() || '미입력'}`);
+          bodyLines.push(`• 받는주소: ${card.address.trim() || '미입력'}${addrMemoStr}`);
           bodyLines.push(`• 보내는사람: ${senderStr}`);
           bodyLines.push(lineCommand);
           bodyLines.push(``);
@@ -1595,7 +1649,8 @@
             recipientPhone: card.phone,
             recipientAddr: card.address,
             item: card.itemOverride || currentSelectedCategory,
-            quantity: it.count
+            quantity: it.count,
+            memo: card.memo || ""
           }, {
             name: card.name,
             phone: card.phone,
