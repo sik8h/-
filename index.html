@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>우정물류 택배 접수</title>
+  <title>우정물류 택배 접수 v3.5</title>
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#0284c7">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -33,11 +33,11 @@
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col font-sans">
 
-  <!-- Header: Removed red '가락몰' badge -->
+  <!-- Header -->
   <header class="bg-sky-700 text-white p-3 shadow-lg sticky top-0 z-40 flex justify-between items-center">
     <div class="flex items-center space-x-2">
       <h1 class="text-base font-black tracking-tight flex items-center gap-1.5">
-        <span>📦</span> 우정물류 택배 접수
+        <span>📦</span> 우정물류 택배 접수 v3.5
       </h1>
     </div>
     <div class="flex items-center space-x-2">
@@ -47,7 +47,7 @@
     </div>
   </header>
 
-  <!-- Top 4 Main Tabs -->
+  <!-- Navigation Tabs -->
   <nav class="bg-slate-800 border-b border-slate-700 flex text-xs font-bold text-slate-300 sticky top-[49px] z-30">
     <button onclick="switchTab('tabOrder')" id="tabBtnOrder" class="flex-1 py-2.5 text-center border-b-2 border-amber-400 text-amber-400 flex justify-center items-center gap-1">
       <span>📦</span><span>택배접수</span>
@@ -63,7 +63,7 @@
     </button>
   </nav>
 
-  <!-- Hands-free Voice Recognition Bar -->
+  <!-- Voice Recognition Bar -->
   <div class="bg-gradient-to-r from-amber-500 to-orange-600 p-2 shadow-md">
     <button id="voiceBtn" onclick="toggleVoiceRecognition()" class="w-full bg-slate-950/80 hover:bg-slate-950 text-amber-300 font-bold py-1.5 px-3 rounded-xl flex items-center justify-center space-x-2 border border-amber-400/40 active:scale-[0.99] transition">
       <span id="voiceIcon" class="text-base">🎤</span>
@@ -77,41 +77,66 @@
     <!-- TAB 1: 📦 택배접수 -->
     <section id="tabOrder" class="space-y-3">
 
-      <!-- SECTION 1. 폴더 트리 기반 업체 & 품목 선택 -->
+      <!-- Recipient Input FIRST -->
       <div class="bg-slate-800 p-3.5 rounded-2xl border border-slate-700 shadow-md space-y-2.5">
         <div class="flex justify-between items-center">
           <label class="text-xs font-bold text-amber-400 flex items-center gap-1">
-            <span>📂</span> [1] 폴더 선택 및 업체 지정 (100% 공식 풀네임)
+            <span>👤</span> [1단계] 받는 사람(수취인) 입력 및 단골 자동완성
           </label>
-          <button onclick="openFolderModal()" class="text-[11px] bg-slate-700 hover:bg-slate-600 text-amber-300 px-2 py-1 rounded-lg border border-slate-600 font-bold">
-            📁 +폴더/업체관리
+        </div>
+
+        <div id="recipientsContainer" class="space-y-3">
+          <!-- Dynamic recipient cards -->
+        </div>
+
+        <div class="mt-2 flex gap-2">
+          <button onclick="addRecipientCard()" class="flex-1 bg-slate-700 hover:bg-slate-600 text-amber-300 font-bold text-xs py-2.5 px-3 rounded-xl border border-amber-500/30 flex justify-center items-center gap-1 shadow">
+            <span>➕</span> 수취인 추가
+          </button>
+          <button onclick="clearAllRecipients()" class="bg-rose-950 hover:bg-rose-900 text-rose-300 text-xs py-2.5 px-3 rounded-xl border border-rose-800/50">
+            전체 초기화
+          </button>
+        </div>
+      </div>
+
+      <!-- Sender Company Selection SECOND -->
+      <div class="bg-slate-800 p-3.5 rounded-2xl border border-slate-700 shadow-md space-y-2.5">
+        <div class="flex justify-between items-center">
+          <label class="text-xs font-bold text-amber-400 flex items-center gap-1">
+            <span>🏪</span> [2단계] 보내는 업체 및 품목 선택
+          </label>
+          <button onclick="openFolderAddModal()" class="text-[11px] bg-slate-700 hover:bg-slate-600 text-amber-300 px-2 py-1 rounded-lg border border-slate-600 font-bold">
+            📁 +새 폴더
           </button>
         </div>
 
-        <!-- 폴더 선택 탭 바 -->
-        <div id="folderTabsContainer" class="flex gap-1.5 overflow-x-auto pb-1 text-xs">
-          <!-- JS Dynamic Folder Tabs -->
+        <!-- Candidate Store Chips -->
+        <div id="candidateStoresContainer" class="hidden p-2 bg-slate-950 rounded-xl border border-amber-500/40 text-xs space-y-1">
+          <span class="text-[11px] font-bold text-amber-300">⚡ 선택한 수취인의 출고 이력 업체 원터치 선택:</span>
+          <div id="candidateStoreChips" class="flex gap-1.5 overflow-x-auto pt-1">
+            <!-- JS Candidate Chips -->
+          </div>
         </div>
 
-        <!-- 업체 초성 & 검색창 -->
+        <!-- Choseong Search Bar -->
         <div class="flex gap-2">
-          <input type="text" id="companySearchInput" oninput="filterCompanyButtons()" placeholder="업체 풀네임 / 초성 검색 (예: 상아건해, 16번, 수도건해, ㅅㄷ)" class="flex-1 bg-slate-900 border border-slate-700 text-xs rounded-xl px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-sky-500">
+          <input type="text" id="companySearchInput" oninput="filterCompanyAccordion()" placeholder="🔍 초성/업체명 검색 (예: ㅂㅇ, 16, 율리팜)" class="flex-1 bg-slate-900 border border-slate-700 text-xs rounded-xl px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-sky-500">
           <button onclick="resetCompanySearch()" class="bg-slate-700 text-xs px-3 py-2 rounded-xl text-slate-300 hover:bg-slate-600 font-semibold">초기화</button>
         </div>
 
-        <!-- 업체 버튼 그리드 -->
-        <div id="companyButtonsContainer" class="grid grid-cols-2 sm:grid-cols-3 gap-1.5 max-h-48 overflow-y-auto p-1.5 bg-slate-900/80 rounded-xl border border-slate-700/60">
-          <!-- JS Dynamic Buttons -->
+        <!-- Vertical Accordion UI [📁 폴더명 (N)] -->
+        <div id="verticalAccordionContainer" class="space-y-2 max-h-64 overflow-y-auto p-1 bg-slate-900/80 rounded-xl border border-slate-700/60">
+          <!-- JS Vertical Accordion Folders -->
         </div>
 
-        <!-- 다품목 원터치 칩(Chip) 선택 바 -->
+        <!-- Item Tag Manager & Fast Chips -->
         <div>
           <div class="flex justify-between items-center mb-1">
             <span class="text-[11px] font-bold text-slate-300 flex items-center gap-1">
-              <span>🏷️</span> 원터치 품목 변경
+              <span>🏷️</span> 원터치 품목 선택
             </span>
-            <button onclick="promptAddCustomItem()" class="text-[10px] bg-slate-700 hover:bg-slate-600 text-amber-300 px-2 py-0.5 rounded-lg border border-slate-600 font-bold">
-              + 품목추가
+            <button onclick="openItemEditModal()" class="text-[10px] bg-slate-700 hover:bg-slate-600 text-amber-300 px-2 py-0.5 rounded-lg border border-slate-600 font-bold">
+              ✏️ 품목 편집
             </button>
           </div>
           <div id="itemChipsContainer" class="flex gap-1.5 overflow-x-auto pb-1 text-xs">
@@ -119,7 +144,7 @@
           </div>
         </div>
 
-        <!-- 선택된 업체 디스플레이 & 위탁 발송인 패널 -->
+        <!-- Selected Company Info & Sender Override -->
         <div class="p-2.5 bg-slate-900/90 rounded-xl border border-amber-500/40 text-xs space-y-2">
           <div class="flex justify-between items-center">
             <div>
@@ -133,7 +158,6 @@
             </div>
           </div>
 
-          <!-- 위탁 발송인 지정 패널 -->
           <div class="border-t border-slate-800 pt-2">
             <button type="button" onclick="toggleActualSenderPanel()" class="text-[11px] text-sky-400 hover:text-sky-300 font-bold flex items-center justify-between w-full">
               <span>🔄 [실제 보내는사람(송장 발송인)이 업체와 다를 때]</span>
@@ -142,7 +166,7 @@
 
             <div id="actualSenderPanel" class="hidden mt-2 p-2 bg-slate-950 rounded-xl border border-slate-800 space-y-1.5">
               <div class="text-[10px] text-slate-400">
-                업체 정산과 실제 송장 표기 발송인이 다를 때 사용합니다. (예: 해향유통 이인석 010-9995-7869)
+                업체 정산과 실제 송장 표기 발송인이 다를 때 지정합니다.
               </div>
               <div class="grid grid-cols-2 gap-2">
                 <input type="text" id="actualSenderNameInput" oninput="updateSummaryOutput()" placeholder="실제 발송인 상호/성명" class="bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-xs text-white">
@@ -153,13 +177,12 @@
         </div>
       </div>
 
-      <!-- SECTION 2. 빠른 사진 첨부 & 카톡 원문 스마트 파서 -->
+      <!-- Photos & Smart Text Parser -->
       <div class="bg-slate-800 p-3.5 rounded-2xl border border-slate-700 shadow-md space-y-2.5">
         <label class="text-xs font-bold text-amber-400 flex items-center gap-1">
-          <span>⚡</span> [2] 사진 첨부 & 카톡 원문 스마트 파서
+          <span>⚡</span> [3단계] 사진 첨부 & 카톡 원문 파서
         </label>
 
-        <!-- REQUIREMENT 6: Left = Picture Album, Right = Camera -->
         <div class="grid grid-cols-2 gap-2">
           <label class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs py-2.5 px-3 rounded-xl font-bold cursor-pointer flex justify-center items-center gap-1.5 shadow active:scale-[0.99] transition">
             <span>🖼️</span> [🖼️ 사진불러오기]
@@ -173,7 +196,7 @@
         </div>
 
         <div class="space-y-1.5">
-          <textarea id="rawTextInput" rows="2.5" class="w-full bg-slate-950 border border-slate-700 text-xs rounded-xl p-2.5 text-slate-200 focus:outline-none focus:border-amber-500 font-mono" placeholder="카톡/문자 원문 붙여넣기 (예: 보내는사람: 해향유통 이인석 010-9995-7869 \n받는사람: 창동하나로 장영애 010-7585-5803 서울 도봉구 마들로 11길 20...)"></textarea>
+          <textarea id="rawTextInput" rows="2.5" class="w-full bg-slate-950 border border-slate-700 text-xs rounded-xl p-2.5 text-slate-200 focus:outline-none focus:border-amber-500 font-mono" placeholder="카톡/문자 원문 통째로 붙여넣기 (예: 보내는사람: 해향유통 이인석 010-9995-7869 \n받는사람: 창동하나로 장영애 010-7585-5803 서울 도봉구 마들로 11길 20...)"></textarea>
           <div class="flex justify-end gap-2">
             <button onclick="clearRawTextInput()" class="bg-slate-700 text-xs px-2.5 py-1.5 rounded-lg text-slate-300">비우기</button>
             <button onclick="parseRawText()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs px-3.5 py-1.5 rounded-lg shadow">
@@ -184,37 +207,15 @@
 
         <div id="ocrStatus" class="hidden p-2.5 bg-indigo-950 border border-indigo-500 rounded-xl text-xs text-indigo-200 flex items-center gap-2">
           <div class="animate-spin rounded-full h-4 w-4 border-2 border-indigo-400 border-t-transparent"></div>
-          <span id="ocrStatusMsg">Gemini AI가 사진 속 전표를 분석하고 있습니다...</span>
+          <span id="ocrStatusMsg">Gemini AI가 전표 분석 중...</span>
         </div>
       </div>
 
-      <!-- SECTION 3. 수취인 카드 명단 & 단골 DB 스마트 불러오기 -->
+      <!-- Final Summary & Share -->
       <div class="bg-slate-800 p-3.5 rounded-2xl border border-slate-700 shadow-md space-y-2.5">
         <div class="flex justify-between items-center">
           <label class="text-xs font-bold text-amber-400 flex items-center gap-1">
-            <span>📋</span> [3] 수취인 카드 작성 & 단골 DB 불러오기
-          </label>
-        </div>
-
-        <div id="recipientsContainer" class="space-y-3">
-          <!-- Dynamic recipient cards -->
-        </div>
-
-        <div class="mt-3 flex gap-2">
-          <button onclick="addRecipientCard()" class="flex-1 bg-slate-700 hover:bg-slate-600 text-amber-300 font-bold text-xs py-2.5 px-3 rounded-xl border border-amber-500/30 flex justify-center items-center gap-1 shadow">
-            <span>➕</span> 수취인 카드 추가
-          </button>
-          <button onclick="clearAllRecipients()" class="bg-rose-950 hover:bg-rose-900 text-rose-300 text-xs py-2.5 px-3 rounded-xl border border-rose-800/50">
-            전체 초기화
-          </button>
-        </div>
-      </div>
-
-      <!-- SECTION 4. 최종 접수 요약 텍스트 & 미수금 처리 -->
-      <div class="bg-slate-800 p-3.5 rounded-2xl border border-slate-700 shadow-md space-y-2.5">
-        <div class="flex justify-between items-center">
-          <label class="text-xs font-bold text-amber-400 flex items-center gap-1">
-            <span>🖨️</span> [4] 최종 접수 요약 텍스트
+            <span>🖨️</span> [4단계] 최종 접수 요약 텍스트
           </label>
           <button onclick="copySummaryText()" class="bg-slate-700 hover:bg-slate-600 text-xs px-2.5 py-1 rounded-lg text-slate-200 border border-slate-600 font-semibold">
             📋 텍스트 복사
@@ -232,18 +233,7 @@
           </label>
         </div>
 
-        <textarea id="summaryOutput" readonly rows="8" class="w-full bg-slate-950 border border-slate-700 text-emerald-400 font-mono text-xs rounded-xl p-3 focus:outline-none leading-relaxed shadow-inner" placeholder="수취인 정보를 입력하면 요약 텍스트가 실시간 출력됩니다."></textarea>
-
-        <!-- REQUIREMENT 5: 미수금 기입 버튼 -->
-        <div class="p-2.5 bg-slate-950 rounded-xl border border-amber-500/30 flex items-center justify-between text-xs">
-          <span class="text-slate-300 font-bold">💰 미수금 장부 기록:</span>
-          <div class="flex items-center gap-2">
-            <input type="number" id="unpaidAddAmountInput" placeholder="금액(원)" class="w-24 bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-xs text-white font-mono text-right">
-            <button onclick="addCurrentOrderToUnpaid()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold px-3 py-1.5 rounded-lg shadow">
-              💸 이 접수를 미수금에 추가
-            </button>
-          </div>
-        </div>
+        <textarea id="summaryOutput" readonly rows="8" class="w-full bg-slate-950 border border-slate-700 text-emerald-400 font-mono text-xs rounded-xl p-3 focus:outline-none leading-relaxed shadow-inner" placeholder="요약 텍스트가 실시간 출력됩니다."></textarea>
 
         <div id="photoPreviewArea" class="hidden">
           <div class="text-xs text-slate-400 font-bold mb-1 flex justify-between items-center">
@@ -269,14 +259,13 @@
       <div class="bg-slate-800 p-3.5 rounded-2xl border border-slate-700 shadow-md space-y-3">
         <div class="flex justify-between items-center">
           <h2 class="text-xs font-bold text-amber-400 flex items-center gap-1">
-            <span>💰</span> 업체별 미수금 원장 관리
+            <span>💰</span> 업체별 미수금 독립 원장 장부
           </h2>
           <button onclick="openUnpaidManualModal()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs px-2.5 py-1.5 rounded-lg font-bold">
             ➕ 미수금/입금 수동 기록
           </button>
         </div>
 
-        <!-- 미수금 대시보드 카드 -->
         <div class="grid grid-cols-3 gap-2 text-center text-xs">
           <div class="bg-slate-900 p-2.5 rounded-xl border border-slate-700">
             <div class="text-[10px] text-slate-400">총 미수금 잔액</div>
@@ -295,7 +284,7 @@
         <input type="text" id="unpaidSearchInput" oninput="renderUnpaidLedger()" placeholder="업체 풀네임 검색" class="w-full bg-slate-900 border border-slate-700 text-xs rounded-xl px-3 py-2 text-white">
 
         <div id="unpaidListContainer" class="space-y-2 max-h-[550px] overflow-y-auto pr-1">
-          <!-- JS Dynamic Unpaid Ledger -->
+          <!-- JS Unpaid Ledger -->
         </div>
       </div>
     </section>
@@ -315,7 +304,7 @@
         <input type="text" id="vipSearchInput" oninput="renderVipList()" placeholder="수취인 성명 / 전화번호 / 주소 / 출고업체 검색" class="w-full bg-slate-900 border border-slate-700 text-xs rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-500">
 
         <div id="vipListContainer" class="space-y-2 max-h-[550px] overflow-y-auto pr-1">
-          <!-- JS dynamic VIP list -->
+          <!-- JS VIP list -->
         </div>
       </div>
     </section>
@@ -328,7 +317,7 @@
             <span>📁</span> 폴더 생성 및 소속 업체 관리 (100% 풀네임)
           </h2>
           <button onclick="openFolderAddModal()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs px-2.5 py-1.5 rounded-lg font-bold">
-            📁 +폴더 만들기
+            📁 +새 폴더
           </button>
         </div>
 
@@ -340,30 +329,68 @@
 
   </main>
 
-  <!-- VIP Select Modal -->
-  <div id="vipSelectModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-    <div class="bg-slate-800 border border-slate-700 rounded-2xl max-w-lg w-full p-4 shadow-2xl space-y-3">
-      <div class="flex justify-between items-center border-b border-slate-700 pb-2">
-        <h3 id="vipModalVendorTitle" class="text-xs font-bold text-amber-400 flex items-center gap-1">
-          <span>⭐</span> [상아건해] 단골 불러오기
+  <!-- In-Page Layer Modal for Daum Address Search -->
+  <div id="postcode-layer" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 p-2 hidden">
+    <div class="bg-slate-800 border border-slate-700 rounded-2xl w-full h-full max-w-lg mx-auto flex flex-col overflow-hidden shadow-2xl">
+      <div class="p-3 bg-slate-900 border-b border-slate-700 flex justify-between items-center">
+        <h3 class="text-xs font-bold text-amber-400 flex items-center gap-1">
+          <span>🔍</span> 다음 도로명 주소 인앱 검증
         </h3>
-        <button onclick="closeModal('vipSelectModal')" class="text-slate-400 hover:text-white text-lg">&times;</button>
+        <button onclick="closePostcodeLayer()" class="text-slate-400 hover:text-white text-lg font-bold">&times; 닫기</button>
       </div>
+      <div id="postcode-embed-container" class="flex-1 w-full bg-white"></div>
+    </div>
+  </div>
 
-      <!-- Tabs: [현재업체 출고단골] vs [타 업체 전체 단골] -->
-      <div class="flex bg-slate-950 p-1 rounded-xl text-xs font-bold">
-        <button id="vipTabCurrent" onclick="switchVipModalTab('current')" class="flex-1 py-1.5 rounded-lg text-amber-300 bg-slate-800">
-          🟢 [현재업체 출고단골]
-        </button>
-        <button id="vipTabAll" onclick="switchVipModalTab('all')" class="flex-1 py-1.5 rounded-lg text-slate-400">
-          🔍 [타 업체 전체 단골 검색]
-        </button>
+  <!-- Item Edit Modal -->
+  <div id="itemEditModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-slate-800 border border-slate-700 rounded-2xl max-w-md w-full p-4 shadow-2xl space-y-3">
+      <div class="flex justify-between items-center border-b border-slate-700 pb-2">
+        <h3 class="text-xs font-bold text-amber-400">✏️ 품목 태그 편집</h3>
+        <button onclick="closeModal('itemEditModal')" class="text-slate-400 hover:text-white text-lg">&times;</button>
       </div>
+      <div id="itemTagManagerList" class="flex flex-wrap gap-1.5 max-h-60 overflow-y-auto p-1">
+        <!-- Dynamic item tag chips -->
+      </div>
+      <div class="flex gap-2 pt-2 border-t border-slate-700">
+        <input type="text" id="newCustomItemInput" placeholder="새 품목명 입력" class="flex-1 bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white">
+        <button onclick="addCustomItemFromModal()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-bold px-3 py-2 rounded-lg">+ 새 품목</button>
+      </div>
+    </div>
+  </div>
 
-      <input type="text" id="vipModalSearchInput" oninput="renderVipModalList()" placeholder="수취인 성명/전화번호 검색" class="w-full bg-slate-900 border border-slate-700 text-xs rounded-xl p-2 text-white">
-
-      <div id="vipModalListContainer" class="space-y-2 max-h-72 overflow-y-auto pr-1">
-        <!-- Dynamic VIP Modal Items -->
+  <!-- Company Edit Modal -->
+  <div id="companyEditModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-slate-800 border border-slate-700 rounded-2xl max-w-md w-full p-4 shadow-2xl space-y-3">
+      <div class="flex justify-between items-center border-b border-slate-700 pb-2">
+        <h3 class="text-xs font-bold text-amber-400">✏️ 업체 정보 수정 및 폴더 이동</h3>
+        <button onclick="closeModal('companyEditModal')" class="text-slate-400 hover:text-white text-lg">&times;</button>
+      </div>
+      <input type="hidden" id="editCompanyFolderIdx" value="-1">
+      <input type="hidden" id="editCompanyCompIdx" value="-1">
+      <div class="space-y-2 text-xs">
+        <div>
+          <label class="block text-slate-400 mb-1">공식 풀네임 *</label>
+          <input type="text" id="editCompanyNameInput" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white font-bold">
+        </div>
+        <div>
+          <label class="block text-slate-400 mb-1">기본 연락처 / 위치</label>
+          <input type="text" id="editCompanyPhoneInput" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white font-mono">
+        </div>
+        <div>
+          <label class="block text-slate-400 mb-1">소속 폴더 변경</label>
+          <select id="editCompanyFolderSelect" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white font-bold">
+            <!-- JS dynamic folder options -->
+          </select>
+        </div>
+        <div>
+          <label class="block text-slate-400 mb-1">기본 품목</label>
+          <input type="text" id="editCompanyCategoryInput" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white">
+        </div>
+      </div>
+      <div class="flex justify-end gap-2 pt-2">
+        <button onclick="closeModal('companyEditModal')" class="bg-slate-700 text-xs px-3 py-2 rounded-lg text-slate-300">취소</button>
+        <button onclick="saveCompanyEditForm()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-bold px-4 py-2 rounded-lg">저장하기</button>
       </div>
     </div>
   </div>
@@ -388,7 +415,7 @@
     </div>
   </div>
 
-  <!-- 수동 미수금/입금 기록 모달 -->
+  <!-- 수동 미수금/입금 모달 -->
   <div id="unpaidManualModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
     <div class="bg-slate-800 border border-slate-700 rounded-2xl max-w-md w-full p-4 shadow-2xl space-y-3">
       <div class="flex justify-between items-center border-b border-slate-700 pb-2">
@@ -448,7 +475,7 @@
         </div>
         <div>
           <label class="block text-slate-400 mb-1">출고 업체 지정 (쉼표 구분)</label>
-          <input type="text" id="vipStoresInput" placeholder="예: 수도건해, 대산건해" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white">
+          <input type="text" id="vipStoresInput" placeholder="예: 대일공사, 상아건해" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white">
         </div>
       </div>
       <div class="flex justify-end gap-2 pt-2">
@@ -458,11 +485,9 @@
     </div>
   </div>
 
-  <!-- JavaScript App Engine -->
-  <script>
-    // ==========================================
-    // 1. INITIAL SPECIFICATIONS & FOLDER TREE
-    // ==========================================
+  <!-- JavaScript Engine v3.5 & Google Sheet Integration -->
+  <script type="module">
+    import { syncCustomersFromSheet, logOrderToSheetAsync } from './src/services/googleSheetService.js';
 
     const DEFAULT_FOLDERS = [
       {
@@ -483,20 +508,7 @@
           { shortName: "영민상회", name: "영민상회", category: "건어물", phone: "010-5009-4623", defaultBox: "C" },
           { shortName: "우일수산", name: "우일수산", category: "건어물", phone: "우일수산", defaultBox: "C" },
           { shortName: "대산건해", name: "대산건해", category: "건어물", phone: "대산건해", defaultBox: "B" },
-          { shortName: "수도건해", name: "수도건해", category: "김", phone: "수도건해", defaultBox: "D" },
-          { shortName: "한성건해", name: "한성건해", category: "건어물", phone: "010-8256-9992", defaultBox: "B" },
-          { shortName: "대인건해", name: "대인건해", category: "건어물", phone: "010-2679-6412", defaultBox: "B" },
-          { shortName: "한도상회", name: "한도상회", category: "건어물", phone: "한도상회", defaultBox: "B" },
-          { shortName: "대진건해", name: "대진건해", category: "건어물", phone: "010-8911-3287", defaultBox: "B" },
-          { shortName: "고흥건해", name: "고흥건해", category: "건어물", phone: "02-407-7093", defaultBox: "B" },
-          { shortName: "북일건해", name: "북일건해", category: "건어물", phone: "북일건해", defaultBox: "B" },
-          { shortName: "강동건해", name: "강동건해", category: "건어물", phone: "010-5236-8457", defaultBox: "B" },
-          { shortName: "청암상회", name: "청암상회", category: "건어물", phone: "청암상회", defaultBox: "B" },
-          { shortName: "영창상회", name: "영창상회", category: "건어물", phone: "010-4178-3818", defaultBox: "B" },
-          { shortName: "쓰리현", name: "쓰리현", category: "건어물", phone: "쓰리현", defaultBox: "B" },
-          { shortName: "성심상회", name: "성심상회", category: "건어물", phone: "성심상회", defaultBox: "B" },
-          { shortName: "오지다건해", name: "오지다건해", category: "건어물", phone: "오지다건해", defaultBox: "B" },
-          { shortName: "호돌이푸드", name: "호돌이푸드", category: "건어물", phone: "02-407-2139", defaultBox: "B" }
+          { shortName: "수도건해", name: "수도건해", category: "김", phone: "수도건해", defaultBox: "D" }
         ]
       },
       {
@@ -507,23 +519,9 @@
           { shortName: "16번옆", name: "16번옆", category: "고구마", phone: "010-3169-0207", defaultBox: "B" },
           { shortName: "52번", name: "52번", category: "사과", phone: "52번", defaultBox: "우체국" },
           { shortName: "52번옆", name: "52번옆", category: "과일", phone: "010-3531-5378", defaultBox: "우체국" },
-          { shortName: "5번기둥", name: "5번기둥", category: "고구마", phone: "5번기둥", defaultBox: "B" },
-          { shortName: "12번기둥", name: "12번기둥", category: "고구마", phone: "010-9982-1813", defaultBox: "B" },
-          { shortName: "21번기둥", name: "21번기둥", category: "고구마", phone: "010-2272-7622", defaultBox: "B" },
-          { shortName: "4번기둥", name: "4번기둥", category: "고구마", phone: "010-7558-1941", defaultBox: "B" },
-          { shortName: "천왕", name: "천왕", category: "고구마", phone: "천왕", defaultBox: "B" },
           { shortName: "억기농산", name: "억기농산", category: "고구마", phone: "010-5494-8645", defaultBox: "B" },
-          { shortName: "백운농산", name: "백운농산", category: "고구마", phone: "010-4693-3602", defaultBox: "B" },
           { shortName: "백두산상회", name: "백두산상회", category: "과일", phone: "010-8363-6737", defaultBox: "우체국" },
-          { shortName: "덕화", name: "덕화", category: "고구마", phone: "덕화", defaultBox: "B" },
-          { shortName: "이조농산", name: "이조농산", category: "고구마", phone: "이조농산", defaultBox: "B" },
-          { shortName: "매점옆", name: "매점옆", category: "고구마", phone: "010-7120-7074", defaultBox: "B" },
-          { shortName: "하나푸드", name: "하나푸드", category: "사과", phone: "010-5477-7571", defaultBox: "우체국" },
-          { shortName: "19번청리", name: "19번청리", category: "고구마", phone: "19번청리", defaultBox: "B" },
-          { shortName: "68번", name: "68번", category: "과일", phone: "010-8976-9301", defaultBox: "B" },
-          { shortName: "51번과일", name: "51번과일", category: "과일", phone: "010-3081-8300", defaultBox: "우체국" },
-          { shortName: "감자전매점", name: "감자전매점", category: "감자", phone: "010-3235-9347", defaultBox: "B" },
-          { shortName: "농부하우스", name: "농부하우스", category: "고구마", phone: "농부하우스", defaultBox: "B" }
+          { shortName: "하나푸드", name: "하나푸드", category: "사과", phone: "010-5477-7571", defaultBox: "우체국" }
         ]
       },
       {
@@ -536,20 +534,7 @@
           { shortName: "대일공사", name: "대일공사", category: "고춧가루", phone: "대일공사", defaultBox: "C" },
           { shortName: "호남상회", name: "호남상회", category: "고춧가루", phone: "010-3730-7830", defaultBox: "C" },
           { shortName: "창성", name: "창성", category: "마늘", phone: "010-3709-0000", defaultBox: "C" },
-          { shortName: "송이쓰", name: "송이쓰", category: "버섯", phone: "송이쓰", defaultBox: "B" },
-          { shortName: "뿌리쟁이", name: "뿌리쟁이", category: "도라지", phone: "뿌리쟁이", defaultBox: "우체국" },
-          { shortName: "66번", name: "66번", category: "야채", phone: "66번", defaultBox: "우체국" },
-          { shortName: "67번", name: "67번", category: "김치", phone: "67번", defaultBox: "D" },
-          { shortName: "70번", name: "70번", category: "야채", phone: "010-2700-1094", defaultBox: "우체국" },
-          { shortName: "야채 58번", name: "야채 58번", category: "야채", phone: "010-7737-7377", defaultBox: "B" },
-          { shortName: "야채50번", name: "야채50번", category: "야채", phone: "010-9986-5183", defaultBox: "C" },
-          { shortName: "128호", name: "128호", category: "생강", phone: "128호", defaultBox: "C" },
-          { shortName: "삼덕농산", name: "삼덕농산", category: "도라지", phone: "삼덕농산", defaultBox: "D" },
-          { shortName: "아름농산", name: "아름농산", category: "야채", phone: "아름농산", defaultBox: "우체국" },
-          { shortName: "둘리농산", name: "둘리농산", category: "농산물", phone: "둘리농산", defaultBox: "C" },
-          { shortName: "금산상회", name: "금산상회", category: "인삼", phone: "02-443-4036", defaultBox: "B" },
-          { shortName: "마늘집", name: "마늘집", category: "마늘", phone: "010-9064-7411", defaultBox: "C" },
-          { shortName: "야채생각", name: "야채생각", category: "야채", phone: "야채생각", defaultBox: "C" }
+          { shortName: "삼덕농산", name: "삼덕농산", category: "도라지", phone: "삼덕농산", defaultBox: "D" }
         ]
       },
       {
@@ -561,80 +546,22 @@
           { shortName: "일호축산", name: "일호축산", category: "정육", phone: "010-8942-2675", defaultBox: "우체국" },
           { shortName: "또순김치", name: "또순김치", category: "김치", phone: "010-9949-8146", defaultBox: "A" },
           { shortName: "제일식품", name: "제일식품", category: "젓갈", phone: "010-2492-7646", defaultBox: "C" },
-          { shortName: "만세유통", name: "만세유통", category: "쌀", phone: "만세유통", defaultBox: "D" },
-          { shortName: "가락몰태경", name: "가락몰태경", category: "굴비", phone: "가락몰태경", defaultBox: "우체국" },
-          { shortName: "일광굴비", name: "일광굴비", category: "굴비", phone: "010-3431-2570", defaultBox: "C" },
-          { shortName: "갈릴리", name: "갈릴리", category: "굴비", phone: "010-2790-2572", defaultBox: "C" },
-          { shortName: "대일굴비", name: "대일굴비", category: "보리굴비", phone: "대일굴비", defaultBox: "우체국" },
-          { shortName: "자매수산", name: "자매수산", category: "수산물", phone: "010-9600-2738", defaultBox: "D" },
-          { shortName: "무량수산", name: "무량수산", category: "수산물", phone: "010-7645-2122", defaultBox: "D" },
-          { shortName: "진성수산", name: "진성수산", category: "김", phone: "010-5002-7151", defaultBox: "D" },
-          { shortName: "금호수산", name: "금호수산", category: "김", phone: "금호수산", defaultBox: "D" },
-          { shortName: "태영123", name: "태영123", category: "수산물", phone: "010-6393-4319", defaultBox: "D" },
-          { shortName: "강동유통", name: "강동유통", category: "수산물", phone: "010-9866-3324", defaultBox: "D" },
-          { shortName: "희현꽃게", name: "희현꽃게", category: "꽃게", phone: "010-5306-8754", defaultBox: "D" },
-          { shortName: "보보수산", name: "보보수산", category: "수산물", phone: "010-8914-5450", defaultBox: "D" },
-          { shortName: "신창축산", name: "신창축산", category: "정육", phone: "010-3662-9034", defaultBox: "우체국" },
-          { shortName: "제일조은축산", name: "제일조은축산", category: "정육", phone: "제일조은축산", defaultBox: "우체국" },
-          { shortName: "은희축산", name: "은희축산", category: "정육", phone: "010-3725-2819", defaultBox: "우체국" },
-          { shortName: "보원축산", name: "보원축산", category: "정육", phone: "02-409-1325", defaultBox: "우체국" },
-          { shortName: "한강축산", name: "한강축산", category: "정육", phone: "010-8288-8632", defaultBox: "우체국" },
-          { shortName: "강동축산", name: "강동축산", category: "정육", phone: "02-408-6404", defaultBox: "우체국" },
-          { shortName: "삼육축산", name: "삼육축산", category: "정육", phone: "010-8957-3609", defaultBox: "우체국" },
-          { shortName: "성환축산", name: "성환축산", category: "정육", phone: "성환축산", defaultBox: "우체국" },
-          { shortName: "대지닭집", name: "대지닭집", category: "정육", phone: "010-5530-6241", defaultBox: "우체국" },
-          { shortName: "필닭", name: "필닭", category: "정육", phone: "010-3768-1117", defaultBox: "우체국" },
-          { shortName: "인제상회", name: "인제상회", category: "비닐봉투", phone: "인제상회", defaultBox: "우체국" },
-          { shortName: "농협휴게실", name: "농협휴게실", category: "잡화", phone: "농협휴게실", defaultBox: "C" }
+          { shortName: "자매수산", name: "자매수산", category: "수산물", phone: "010-9600-2738", defaultBox: "D" }
         ]
       }
     ];
 
     const DEFAULT_ITEM_CHIPS = [
-      "고구마", "과일", "사과", "배", "귤", "대봉", "단감", "샤인", "망고", "딸기",
-      "건어물", "황태채", "멸치", "김", "미역", "다시마", "굴비", "보리굴비", "오징어", "쥐포",
-      "새우", "젓갈", "고춧가루", "마늘", "양파", "당근", "생강", "야채", "버섯", "도라지",
-      "김치", "정육", "수산물", "꽃게", "쌀", "비닐봉투"
+      "고구마", "감자", "사과", "단감", "건어물", "김", "젓갈", "마늘", "10키로", "정육", "과일", "배", "귤", "고춧가루", "도라지", "수산물"
     ];
 
     const INITIAL_VIP_LIST = [
-      { name: "서울시청 구내식당(이두례)", phone: "010-2442-1830", address: "서울 중구 세종대로 110", storeHistory: ["영화물산"] },
-      { name: "삼산물류(함예빈)", phone: "010-8077-4525", address: "울산 남구 중앙로 75번길 30-56", storeHistory: ["영화물산"] },
-      { name: "굿테이블(홍진용)", phone: "010-3028-7260", address: "경기도 고양시 덕양구 향동로 218 현대테라타워 dmc A-112호", storeHistory: ["영화물산"] },
-      { name: "시골홍두깨칼국수", phone: "010-5765-6606", address: "경기도 안산시 상록구 성호로 118번지", storeHistory: ["영화물산"] },
-      { name: "창동하나로 장영애", phone: "010-7585-5803", address: "서울 도봉구 마들로 11길 20 창동하나로마트 수산팀 검수장", storeHistory: ["수도건해"] },
-      { name: "수원하나로 임영선", phone: "010-5522-1676", address: "경기도 수원시 권선구 서부로 1937 수원하나로마트 검수장", storeHistory: ["수도건해"] },
-      { name: "삼송하나로 이미자", phone: "010-8781-8497", address: "경기도 고양시 덕양구 동송로 20 삼송하나로마트 수산팀 검수장", storeHistory: ["수도건해"] },
-      { name: "홈플러스 효자점 박경자", phone: "010-9420-0822", address: "전주시 완산구 용머리로 31 홈플러스 효자점", storeHistory: ["수도건해"] },
-      { name: "홈플러스 동광주점 옥윤신", phone: "010-2850-1694", address: "광주광역시 북구 동문대로 200 홈플러스 동광주점", storeHistory: ["수도건해"] },
-      { name: "동탄하나로 이인석", phone: "010-9995-7869", address: "경기도 화성시 동탄순환대로 27길 30 하나로마트 동탄점 1층 검수장", storeHistory: ["수도건해"] },
-      { name: "양동 이민영", phone: "010-8607-2829", address: "광주광역시 서구 양동 5-41", storeHistory: ["수도건해"] },
-      { name: "한아름 건어물", phone: "010-9039-3333", address: "서울 금천구 시흥대로 142길 31", storeHistory: ["수도건해"] },
-      { name: "율전 건어물 견과류 이석흠", phone: "010-4763-9399", address: "경기도 수원시 장안구 율전동 156-3 1층", storeHistory: ["미나유통"] },
-      { name: "참새방앗간 이한결", phone: "010-6545-0269", address: "충남 태안군 읍시장 4길 18번지", storeHistory: ["미나유통"] },
-      { name: "어미락", phone: "010-3881-7602", address: "충남 아산시 용화동 251-4", storeHistory: ["미나유통"] },
-      { name: "인디고", phone: "010-9774-5798", address: "경기도 시흥시 서울대학로 264번길 7 아브뉴프랑퍼플 B동 124호", storeHistory: ["미나유통"] },
-      { name: "펀앤펍", phone: "010-9099-9809", address: "서울 강남구 선릉로 86길 17 지하 1층", storeHistory: ["미나유통"] },
-      { name: "쿠스범스", phone: "010-7770-7815", address: "서울 강동구 풍성로 56길 40 1층 101호", storeHistory: ["미나유통"] },
-      { name: "조은라이브", phone: "010-4632-0945", address: "서울 송파구 잠실동 205-1번지", storeHistory: ["미나유통"] },
-      { name: "월형칼국수", phone: "010-3777-6929", address: "경기도 남양주시 다산중앙로 172번길 36 다산노블레스상가 108호", storeHistory: ["미나유통"] },
-      { name: "을지로골뱅이 조양임", phone: "010-4994-3866", address: "서울 서초구 강남대로 43길 14-1 102호", storeHistory: ["미나유통"] },
-      { name: "송파컴퓨터학원 이정노원장님", phone: "010-3343-0355", address: "경기도 광주시 고불로 453 우남퍼스트빌 102동 601호", storeHistory: ["미나유통"] },
-      { name: "김연옥", phone: "010-6395-9737", address: "충북 충주시 칠금동 부영1차 아파트 103-701", storeHistory: ["삼덕농산"] },
-      { name: "진용만", phone: "010-2966-6677", address: "경기도 파주시 독암길 67-5 2동 501호", storeHistory: ["삼덕농산"] },
-      { name: "고령 해도지", phone: "054-956-5547", address: "경북 고령군 성산면 성산로 806", storeHistory: ["대산건해"] },
-      { name: "백촌물산", phone: "010-5238-7958", address: "강원도 속초시 설악산로 25-6", storeHistory: ["대산건해"] },
-      { name: "황태종가식품", phone: "010-7163-3356", address: "강원도 춘천시 동내면 사암길 16", storeHistory: ["대산건해"] },
-      { name: "온정원", phone: "010-8506-8186", address: "전북 완주군 용진읍 신지송광로 381", storeHistory: ["대산건해"] },
-      { name: "골목식당", phone: "010-8854-9944", address: "경기도 의정부시 민락동 533-1", storeHistory: ["자매수산"] },
-      { name: "해조림", phone: "033-552-3558", address: "강원도 태백시 황지동 418-16", storeHistory: ["자매수산"] },
-      { name: "미리스쿡", phone: "010-5702-6554", address: "충북 음성군 금왕읍 덕금로 1191번지 103호", storeHistory: ["제일식품"] },
-      { name: "장복골", phone: "010-5122-5451", address: "경기도 여주시 여주남로 162", storeHistory: ["제일식품"] },
-      { name: "정이포장마차", phone: "010-3470-0118", address: "서울시 마포구 서교동 355-25 1층", storeHistory: ["제일식품"] },
       { name: "짱구네(레시피 랩 짱구)", phone: "010-9235-0789", address: "인천 중구 햇내로안길 18-3 1층", storeHistory: ["대일공사"] },
-      { name: "더 살림 문신애", phone: "010-7668-1800", address: "충남 천안시 서북구 쌍용4길 6", storeHistory: ["성광건해"] },
-      { name: "용경무역", phone: "010-6899-2078", address: "경기도 김포시 양촌읍 대포산대로 42", storeHistory: ["성광건해"] },
-      { name: "윤난영", phone: "010-3234-7859", address: "경기 의왕시 양지편로 13-27 C동 201호", storeHistory: ["16번옆"] }
+      { name: "농가맛집", phone: "010-4942-8375", address: "전남 고흥군 도덕면 고흥만로 1132-88", storeHistory: ["일호축산"] },
+      { name: "윤난영", phone: "010-3234-7859", address: "경기 의왕시 양지편로 13-27 C동 201호", storeHistory: ["16번옆"] },
+      { name: "서울시청 구내식당(이두례)", phone: "010-2442-1830", address: "서울 중구 세종대로 110", storeHistory: ["영화물산"] },
+      { name: "창동하나로 장영애", phone: "010-7585-5803", address: "서울 도봉구 마들로 11길 20 창동하나로마트 수산팀 검수장", storeHistory: ["수도건해", "상아건해"] },
+      { name: "참새방앗간 이한결", phone: "010-6545-0269", address: "충남 태안군 읍시장 4길 18번지", storeHistory: ["미나유통"] }
     ];
 
     const BOX_TYPE_OPTIONS = [
@@ -652,24 +579,20 @@
       { id: "착불 8000원", label: "착불 8천" }
     ];
 
-    // ==========================================
-    // 2. STATE & LOCALSTORAGE
-    // ==========================================
     let folders = [];
     let vipList = [];
     let historyList = [];
-    let unpaidLedger = {}; // { "상아건해": { balance: 0, logs: [] } }
+    let unpaidLedger = {};
     let itemChips = [];
     let geminiApiKey = "";
 
-    let currentFolderId = "";
     let selectedCompany = null;
     let currentSelectedCategory = "";
     let recipientCards = [];
-    let activeCardIdForVip = "";
     let currentPhotoFile = null;
-    let isSpeechRecognizing = false;
-    let recognition = null;
+    let openAccordionMap = {};
+    let speechRecognition = null;
+    let isListening = false;
 
     function loadAppState() {
       const savedFolders = localStorage.getItem("woojung_folders");
@@ -688,14 +611,12 @@
       itemChips = savedChips ? JSON.parse(savedChips) : [...DEFAULT_ITEM_CHIPS];
 
       geminiApiKey = localStorage.getItem("woojung_geminiKey") || "";
-      if (geminiApiKey) {
-        document.getElementById("geminiApiKeyInput").value = geminiApiKey;
-      }
+      if (geminiApiKey) document.getElementById("geminiApiKeyInput").value = geminiApiKey;
 
-      currentFolderId = folders[0]?.id || "";
-      const currentFolder = folders.find(f => f.id === currentFolderId);
-      selectedCompany = currentFolder?.companies?.[0] || { shortName: "상아건해", name: "상아건해", category: "건어물", phone: "상아건해", defaultBox: "B" };
+      selectedCompany = folders[0]?.companies?.[0] || { shortName: "상아건해", name: "상아건해", category: "건어물", phone: "상아건해", defaultBox: "B" };
       currentSelectedCategory = selectedCompany.category;
+
+      folders.forEach(f => { openAccordionMap[f.id] = true; });
     }
 
     function saveState() {
@@ -707,30 +628,177 @@
       localStorage.setItem("woojung_geminiKey", geminiApiKey);
     }
 
-    // ==========================================
-    // 3. INIT & NAVIGATION TABS
-    // ==========================================
+    // Speech Recognition
+    function toggleVoiceRecognition() {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRecognition) {
+        return alert("이 브라우저는 음성 인식을 지원하지 않습니다. 크롬 또는 삼성인터넷을 이용해 주세요.");
+      }
+
+      if (isListening) {
+        if (speechRecognition) speechRecognition.stop();
+        return;
+      }
+
+      speechRecognition = new SpeechRecognition();
+      speechRecognition.lang = 'ko-KR';
+      speechRecognition.interimResults = false;
+      speechRecognition.maxAlternatives = 1;
+
+      speechRecognition.onstart = () => {
+        isListening = true;
+        document.getElementById("voiceIcon").innerText = "🔴";
+        document.getElementById("voiceText").innerText = "음성 인식 중... (말씀해 주세요)";
+      };
+
+      speechRecognition.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        console.log("Speech transcript:", transcript);
+        document.getElementById("voiceText").innerText = `인식됨: "${transcript}"`;
+        parseVoiceCommand(transcript);
+      };
+
+      speechRecognition.onerror = (event) => {
+        console.error("Speech recognition error:", event.error);
+        alert("음성 인식 오류: " + event.error);
+      };
+
+      speechRecognition.onend = () => {
+        isListening = false;
+        document.getElementById("voiceIcon").innerText = "🎤";
+        document.getElementById("voiceText").innerText = "음성으로 업체·타입·건수 말하기 (터치하여 시작)";
+      };
+
+      speechRecognition.start();
+    }
+
+    function parseVoiceCommand(text) {
+      let matchedCompany = null;
+      folders.forEach(f => {
+        f.companies.forEach(c => {
+          if (text.includes(c.name) || text.includes(c.shortName)) {
+            matchedCompany = c;
+          }
+        });
+      });
+
+      if (matchedCompany) {
+        selectCompanyByName(matchedCompany.name);
+      }
+
+      let matchedBox = null;
+      if (text.includes("착불 오천") || text.includes("착불 5000") || text.includes("착불 5천")) matchedBox = "착불 5000원";
+      else if (text.includes("착불 사천") || text.includes("착불 4000") || text.includes("착불 4천")) matchedBox = "착불 4000원";
+      else if (text.includes("착불 삼천") || text.includes("착불 3000") || text.includes("착불 3천")) matchedBox = "착불 3000원";
+      else if (text.includes("착불 오천삼백") || text.includes("착불 5300")) matchedBox = "착불 5300원";
+      else if (text.includes("착불 육천") || text.includes("착불 6000") || text.includes("착불 6천")) matchedBox = "착불 6000원";
+      else if (text.includes("우체국")) matchedBox = "우체국";
+      else if (text.includes("비") || text.includes("삐") || text.includes("B")) matchedBox = "B";
+      else if (text.includes("씨") || text.includes("시") || text.includes("C")) matchedBox = "C";
+      else if (text.includes("디") || text.includes("D")) matchedBox = "D";
+      else if (text.includes("에이") || text.includes("A")) matchedBox = "A";
+
+      let matchedCount = 1;
+      if (text.includes("두장") || text.includes("두건") || text.includes("2장") || text.includes("2건")) matchedCount = 2;
+      else if (text.includes("세장") || text.includes("세건") || text.includes("3장") || text.includes("3건")) matchedCount = 3;
+      else if (text.includes("네장") || text.includes("네건") || text.includes("4장") || text.includes("4건")) matchedCount = 4;
+      else if (text.includes("다섯장") || text.includes("다섯건") || text.includes("5장") || text.includes("5건")) matchedCount = 5;
+
+      if (matchedBox && recipientCards.length > 0) {
+        const card = recipientCards[0];
+        card.items = [{ type: matchedBox, count: matchedCount }];
+        renderRecipientCards();
+        updateSummaryOutput();
+      }
+    }
+
+    // Google Sheets Async Sync
+    async function syncSheetData() {
+      const sheetCustomers = await syncCustomersFromSheet();
+      if (sheetCustomers && Array.isArray(sheetCustomers)) {
+        sheetCustomers.forEach(sc => {
+          const idx = vipList.findIndex(v => v.name === sc.name || v.phone === sc.phone);
+          if (idx >= 0) {
+            vipList[idx].address = sc.address || vipList[idx].address;
+            vipList[idx].storeHistory = Array.from(new Set([...vipList[idx].storeHistory, ...sc.usedStores]));
+          } else {
+            vipList.push({
+              name: sc.name,
+              phone: sc.phone,
+              address: sc.address,
+              storeHistory: sc.usedStores || []
+            });
+          }
+        });
+        saveState();
+        renderVipList();
+      }
+    }
+
     window.addEventListener("DOMContentLoaded", () => {
       loadAppState();
-      renderFolderTabs();
-      renderCompanyButtons();
+      renderCompanyAccordion();
       renderItemChips();
       updateSelectedCompanyDisplay();
-      if (recipientCards.length === 0) {
-        addRecipientCard();
-      } else {
-        renderRecipientCards();
-      }
+
+      if (recipientCards.length === 0) addRecipientCard();
+      else renderRecipientCards();
+
       renderUnpaidLedger();
       renderVipList();
       renderFolderManager();
-      renderHistoryList();
-      initSpeechRecognition();
+
+      // Trigger Google Sheet async sync
+      syncSheetData();
 
       if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('sw.js').catch(() => {});
       }
     });
+
+    // Make global handlers for window
+    window.toggleVoiceRecognition = toggleVoiceRecognition;
+    window.switchTab = switchTab;
+    window.openModal = openModal;
+    window.closeModal = closeModal;
+    window.toggleAccordion = toggleAccordion;
+    window.filterCompanyAccordion = filterCompanyAccordion;
+    window.resetCompanySearch = resetCompanySearch;
+    window.selectCompanyByName = selectCompanyByName;
+    window.openItemEditModal = openItemEditModal;
+    window.addCustomItemFromModal = addCustomItemFromModal;
+    window.removeItemTag = removeItemTag;
+    window.toggleActualSenderPanel = toggleActualSenderPanel;
+    window.addRecipientCard = addRecipientCard;
+    window.removeRecipientCard = removeRecipientCard;
+    window.clearAllRecipients = clearAllRecipients;
+    window.updateCardField = updateCardField;
+    window.openInPageAddressSearch = openInPageAddressSearch;
+    window.closePostcodeLayer = closePostcodeLayer;
+    window.toggleBoxTypeItem = toggleBoxTypeItem;
+    window.changeItemCount = changeItemCount;
+    window.clearRawTextInput = clearRawTextInput;
+    window.parseRawText = parseRawText;
+    window.updateSummaryOutput = updateSummaryOutput;
+    window.copySummaryText = copySummaryText;
+    window.openCompanyEditModal = openCompanyEditModal;
+    window.saveCompanyEditForm = saveCompanyEditForm;
+    window.openFolderAddModal = openFolderAddModal;
+    window.editFolderName = editFolderName;
+    window.deleteFolder = deleteFolder;
+    window.renderUnpaidLedger = renderUnpaidLedger;
+    window.openUnpaidSettlePrompt = openUnpaidSettlePrompt;
+    window.openUnpaidManualModal = openUnpaidManualModal;
+    window.saveUnpaidManual = saveUnpaidManual;
+    window.handlePhotoSelect = handlePhotoSelect;
+    window.shareKakaoWithWatermark = shareKakaoWithWatermark;
+    window.saveGeminiApiKey = saveGeminiApiKey;
+    window.openVipFormModal = openVipFormModal;
+    window.editVipModal = editVipModal;
+    window.saveVipForm = saveVipForm;
+    window.deleteVip = deleteVip;
+    window.removeCompanyFromFolder = removeCompanyFromFolder;
+    window.selectVipCustomerForCard = selectVipCustomerForCard;
 
     function switchTab(tabId) {
       ['tabOrder', 'tabUnpaid', 'tabVip', 'tabFolder'].forEach(id => {
@@ -751,39 +819,6 @@
     function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
     function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
 
-    // ==========================================
-    // 4. FOLDER TREE & FULL NAME COMPANY RENDER
-    // ==========================================
-    function renderFolderTabs() {
-      const container = document.getElementById("folderTabsContainer");
-      container.innerHTML = "";
-
-      folders.forEach(f => {
-        const isSel = f.id === currentFolderId;
-        const btn = document.createElement("button");
-        btn.type = "button";
-        btn.onclick = () => selectFolder(f.id);
-        btn.className = `px-3 py-1.5 rounded-xl font-bold text-xs border shrink-0 transition ${
-          isSel
-            ? "bg-amber-400 text-slate-950 border-amber-300 shadow ring-1 ring-amber-300"
-            : "bg-slate-900 text-slate-300 border-slate-700 hover:bg-slate-800"
-        }`;
-        btn.innerText = f.name;
-        container.appendChild(btn);
-      });
-    }
-
-    function selectFolder(folderId) {
-      currentFolderId = folderId;
-      renderFolderTabs();
-      const currentFolder = folders.find(f => f.id === currentFolderId);
-      if (currentFolder && currentFolder.companies.length > 0) {
-        selectCompany(currentFolder.companies[0]);
-      } else {
-        renderCompanyButtons();
-      }
-    }
-
     const CHOSEONG_LIST = ['ㄱ','ㄲ','ㄴ','ㄷ','ㄸ','ㄹ','ㅁ','ㅂ','ㅃ','ㅅ','ㅆ','ㅇ','ㅈ','ㅉ','ㅊ','ㅋ','ㅌ','ㅍ','ㅎ'];
     function getChoseong(str) {
       let result = '';
@@ -798,64 +833,96 @@
       return result;
     }
 
-    function renderCompanyButtons(filterText = "") {
-      const container = document.getElementById("companyButtonsContainer");
+    function renderCompanyAccordion(filterText = "") {
+      const container = document.getElementById("verticalAccordionContainer");
       container.innerHTML = "";
-
-      const currentFolder = folders.find(f => f.id === currentFolderId);
-      const companyList = currentFolder ? currentFolder.companies : [];
 
       const search = filterText.trim().toLowerCase();
       const searchCho = getChoseong(search);
 
-      const filtered = companyList.filter(c => {
-        if (!search) return true;
-        const nameCho = getChoseong(c.name.toLowerCase());
-        return c.name.toLowerCase().includes(search) ||
-               c.category.toLowerCase().includes(search) ||
-               nameCho.includes(searchCho);
-      });
+      folders.forEach((folder, fIdx) => {
+        const filteredComp = folder.companies.filter(c => {
+          if (!search) return true;
+          const nameCho = getChoseong(c.name.toLowerCase());
+          return c.name.toLowerCase().includes(search) || nameCho.includes(searchCho) || c.category.toLowerCase().includes(search);
+        });
 
-      filtered.forEach(c => {
-        const isSelected = selectedCompany && selectedCompany.name === c.name;
-        const btn = document.createElement("button");
-        btn.type = "button";
-        btn.onclick = () => selectCompany(c);
-        btn.className = `p-2 rounded-xl text-left transition font-semibold text-xs border flex flex-col justify-between ${
-          isSelected
-            ? "bg-amber-500 text-slate-950 border-amber-300 shadow-md ring-2 ring-amber-400"
-            : "bg-slate-800 text-slate-200 border-slate-700 hover:bg-slate-700"
-        }`;
-        btn.innerHTML = `
-          <div class="flex justify-between items-center w-full">
-            <span class="font-black text-sm truncate">${escapeHtml(c.name)}</span>
-            <span class="text-[10px] px-1.5 py-0.2 rounded-md ${isSelected ? 'bg-amber-700 text-amber-100' : 'bg-slate-900 text-amber-400'}">${escapeHtml(c.category)}</span>
-          </div>
-          <div class="text-[10px] truncate ${isSelected ? 'text-slate-900 font-bold' : 'text-slate-400'} mt-0.5">
-            ${escapeHtml(c.phone)}
-          </div>
+        if (search && filteredComp.length === 0) return;
+
+        const isOpen = openAccordionMap[folder.id] ?? true;
+        const folderDiv = document.createElement("div");
+        folderDiv.className = "bg-slate-900 border border-slate-700/80 rounded-xl overflow-hidden shadow-sm";
+
+        let compButtonsHtml = `<div class="grid grid-cols-2 sm:grid-cols-3 gap-1.5 p-2 bg-slate-950/60 border-t border-slate-800">`;
+        filteredComp.forEach((c, cIdx) => {
+          const isSel = selectedCompany && selectedCompany.name === c.name;
+          compButtonsHtml += `
+            <div class="relative group">
+              <button type="button" onclick="selectCompanyByName('${escapeHtml(c.name)}')" class="w-full p-2 rounded-xl text-left font-semibold text-xs border transition flex flex-col justify-between ${
+                isSel
+                  ? 'bg-amber-500 text-slate-950 border-amber-300 ring-2 ring-amber-400 font-bold'
+                  : 'bg-slate-800 text-slate-200 border-slate-700 hover:bg-slate-700'
+              }">
+                <div class="flex justify-between items-center w-full">
+                  <span class="font-black text-xs truncate">${escapeHtml(c.name)}</span>
+                  <span class="text-[9px] px-1 py-0.2 rounded ${isSel ? 'bg-amber-700 text-amber-100' : 'bg-slate-900 text-amber-400'}">${escapeHtml(c.category)}</span>
+                </div>
+                <div class="text-[10px] truncate ${isSel ? 'text-slate-950 font-bold' : 'text-slate-400'} mt-0.5">
+                  ${escapeHtml(c.phone)}
+                </div>
+              </button>
+              <button type="button" onclick="openCompanyEditModal(${fIdx}, ${cIdx})" class="absolute top-1 right-1 opacity-80 hover:opacity-100 text-[10px] bg-slate-900/90 text-amber-300 px-1 py-0.5 rounded border border-slate-700">
+                ✏️
+              </button>
+            </div>
+          `;
+        });
+        compButtonsHtml += `</div>`;
+
+        folderDiv.innerHTML = `
+          <button type="button" onclick="toggleAccordion('${folder.id}')" class="w-full p-2.5 bg-slate-800/90 hover:bg-slate-800 flex justify-between items-center font-bold text-xs text-amber-300">
+            <span>📁 ${escapeHtml(folder.name)} (${filteredComp.length}개)</span>
+            <span class="text-slate-400 text-sm">${isOpen ? '▲' : '▼'}</span>
+          </button>
+          ${isOpen ? compButtonsHtml : ''}
         `;
-        container.appendChild(btn);
+
+        container.appendChild(folderDiv);
       });
     }
 
-    function filterCompanyButtons() {
+    function toggleAccordion(folderId) {
+      openAccordionMap[folderId] = !openAccordionMap[folderId];
+      renderCompanyAccordion(document.getElementById("companySearchInput").value);
+    }
+
+    function filterCompanyAccordion() {
       const val = document.getElementById("companySearchInput").value;
-      renderCompanyButtons(val);
+      renderCompanyAccordion(val);
     }
 
     function resetCompanySearch() {
       document.getElementById("companySearchInput").value = "";
-      renderCompanyButtons("");
+      renderCompanyAccordion("");
     }
 
-    function selectCompany(companyObj) {
-      selectedCompany = companyObj;
-      currentSelectedCategory = companyObj.category;
-      renderCompanyButtons(document.getElementById("companySearchInput").value);
-      renderItemChips();
-      updateSelectedCompanyDisplay();
-      updateSummaryOutput();
+    function selectCompanyByName(compName) {
+      let found = null;
+      folders.forEach(f => {
+        f.companies.forEach(c => {
+          if (c.name === compName) found = c;
+        });
+      });
+
+      if (found) {
+        selectedCompany = found;
+        currentSelectedCategory = found.category;
+        renderCompanyAccordion(document.getElementById("companySearchInput").value);
+        renderItemChips();
+        updateSelectedCompanyDisplay();
+        recipientCards.forEach(c => validateCard(c));
+        updateSummaryOutput();
+      }
     }
 
     function updateSelectedCompanyDisplay() {
@@ -866,9 +933,6 @@
       document.getElementById("scBox").innerText = `디폴트: ${selectedCompany.defaultBox}`;
     }
 
-    // ==========================================
-    // 5. ITEM CHIPS & SENDER OVERRIDE
-    // ==========================================
     function renderItemChips() {
       const container = document.getElementById("itemChipsContainer");
       container.innerHTML = "";
@@ -895,16 +959,42 @@
       updateSummaryOutput();
     }
 
-    function promptAddCustomItem() {
-      const newItem = prompt("새로 추가할 품목명을 입력하세요:");
-      if (newItem && newItem.trim()) {
-        const clean = newItem.trim();
-        if (!itemChips.includes(clean)) {
-          itemChips.push(clean);
-          saveState();
-          selectItemChip(clean);
-        }
+    function openItemEditModal() {
+      renderItemTagManagerList();
+      openModal("itemEditModal");
+    }
+
+    function renderItemTagManagerList() {
+      const container = document.getElementById("itemTagManagerList");
+      container.innerHTML = "";
+
+      itemChips.forEach((chip, idx) => {
+        const span = document.createElement("span");
+        span.className = "bg-slate-900 border border-slate-700 text-slate-200 text-xs px-2.5 py-1 rounded-lg flex items-center gap-1.5 font-bold";
+        span.innerHTML = `
+          ${escapeHtml(chip)}
+          <button type="button" onclick="removeItemTag(${idx})" class="text-rose-400 hover:text-rose-300 font-bold">✕</button>
+        `;
+        container.appendChild(span);
+      });
+    }
+
+    function addCustomItemFromModal() {
+      const val = document.getElementById("newCustomItemInput").value.trim();
+      if (val && !itemChips.includes(val)) {
+        itemChips.push(val);
+        saveState();
+        renderItemChips();
+        renderItemTagManagerList();
+        document.getElementById("newCustomItemInput").value = "";
       }
+    }
+
+    function removeItemTag(idx) {
+      itemChips.splice(idx, 1);
+      saveState();
+      renderItemChips();
+      renderItemTagManagerList();
     }
 
     function toggleActualSenderPanel() {
@@ -919,9 +1009,6 @@
       }
     }
 
-    // ==========================================
-    // 6. RECIPIENT CARDS & CROSS-VENDOR VIP SHIELD
-    // ==========================================
     function addRecipientCard(initialData = null) {
       const id = Date.now() + Math.random().toString(36).substr(2, 4);
       const defaultBox = selectedCompany ? selectedCompany.defaultBox : "B";
@@ -934,8 +1021,7 @@
         memo: initialData?.memo || "",
         itemOverride: initialData?.itemOverride || "",
         items: initialData?.items || [{ type: defaultBox, count: 1 }],
-        validationMsg: "",
-        crossVendorWarning: null
+        validationMsg: ""
       };
 
       recipientCards.push(newCard);
@@ -952,7 +1038,6 @@
         recipientCards[0].memo = "";
         recipientCards[0].itemOverride = "";
         recipientCards[0].items = [{ type: selectedCompany ? selectedCompany.defaultBox : "B", count: 1 }];
-        recipientCards[0].crossVendorWarning = null;
       } else {
         recipientCards = recipientCards.filter(c => c.id !== id);
       }
@@ -973,21 +1058,79 @@
       card[field] = value;
 
       if (field === 'name' || field === 'phone') {
-        autoMatchVipWithShield(card);
+        reverseBindRecipientToCompany(card);
+        renderAutocompleteDropdown(card);
       }
       validateCard(card);
       updateSummaryOutput();
     }
 
-    // REQUIREMENT 4: Cross-Company Duplication Shield (`🚨 [동명이인/타 업체 단골 주의!]`)
-    function autoMatchVipWithShield(card) {
-      card.crossVendorWarning = null;
+    function renderAutocompleteDropdown(card) {
+      const dropdownElem = document.getElementById(`autocomplete_${card.id}`);
+      if (!dropdownElem) return;
+
+      const normName = card.name.trim().toLowerCase();
+      const normPhone = card.phone.replace(/[^0-9]/g, '');
+
+      if (!normName && !normPhone) {
+        dropdownElem.classList.add("hidden");
+        return;
+      }
+
+      const matches = vipList.filter(v => {
+        const vPhone = v.phone.replace(/[^0-9]/g, '');
+        return (normName && v.name.toLowerCase().includes(normName)) || (normPhone && vPhone.includes(normPhone));
+      });
+
+      if (matches.length === 0) {
+        dropdownElem.classList.add("hidden");
+        return;
+      }
+
+      dropdownElem.innerHTML = "";
+      matches.slice(0, 5).forEach(m => {
+        const item = document.createElement("button");
+        item.type = "button";
+        item.className = "w-full text-left p-2 hover:bg-slate-800 border-b border-slate-800 flex justify-between items-center text-xs text-slate-200";
+        item.onclick = () => selectVipCustomerForCard(card.id, m);
+        item.innerHTML = `
+          <div>
+            <span class="font-bold text-amber-300">${escapeHtml(m.name)}</span>
+            <span class="text-slate-400 font-mono text-[10px] ml-1">(${escapeHtml(m.phone)})</span>
+            <div class="text-[10px] text-slate-400 truncate max-w-xs">${escapeHtml(m.address)}</div>
+          </div>
+          <span class="text-[10px] bg-amber-950 text-amber-300 px-1.5 py-0.5 rounded border border-amber-700">선택</span>
+        `;
+        dropdownElem.appendChild(item);
+      });
+      dropdownElem.classList.remove("hidden");
+    }
+
+    function selectVipCustomerForCard(cardId, vip) {
+      const card = recipientCards.find(c => c.id === cardId);
+      if (!card) return;
+
+      card.name = vip.name;
+      card.phone = vip.phone;
+      card.address = vip.address;
+
+      const dropdownElem = document.getElementById(`autocomplete_${cardId}`);
+      if (dropdownElem) dropdownElem.classList.add("hidden");
+
+      reverseBindRecipientToCompany(card);
+      renderRecipientCards();
+      validateCard(card);
+      updateSummaryOutput();
+    }
+
+    function reverseBindRecipientToCompany(card) {
       const normName = card.name.trim();
       const normPhone = card.phone.replace(/[^0-9]/g, '');
 
-      if (!normName && !normPhone) return;
-
-      const currentVendorName = selectedCompany.name;
+      if (!normName && !normPhone) {
+        document.getElementById("candidateStoresContainer").classList.add("hidden");
+        return;
+      }
 
       const matchedVip = vipList.find(v => {
         const vPhone = v.phone.replace(/[^0-9]/g, '');
@@ -996,51 +1139,37 @@
         return matchN || matchP;
       });
 
-      if (!matchedVip) return;
+      if (!matchedVip) {
+        document.getElementById("candidateStoresContainer").classList.add("hidden");
+        return;
+      }
 
-      const hasHistoryWithCurrentVendor = matchedVip.storeHistory && matchedVip.storeHistory.includes(currentVendorName);
-
-      if (hasHistoryWithCurrentVendor) {
-        if (!card.address.trim()) card.address = matchedVip.address;
-        if (!card.phone.trim()) card.phone = matchedVip.phone;
+      if (!card.address.trim() && matchedVip.address) {
+        card.address = matchedVip.address;
         const addrInput = document.getElementById(`addr_${card.id}`);
         if (addrInput) addrInput.value = matchedVip.address;
-      } else {
-        // CROSS-VENDOR WARNING!
-        const existingVendor = matchedVip.storeHistory ? matchedVip.storeHistory.join(', ') : '기타 업체';
-        card.crossVendorWarning = {
-          name: matchedVip.name,
-          phone: matchedVip.phone,
-          address: matchedVip.address,
-          existingVendor: existingVendor
-        };
       }
-    }
-
-    function applyCrossVendorVip(cardId) {
-      const card = recipientCards.find(c => c.id === cardId);
-      if (!card || !card.crossVendorWarning) return;
-
-      card.name = card.crossVendorWarning.name;
-      card.phone = card.crossVendorWarning.phone;
-      card.address = card.crossVendorWarning.address;
-
-      if (!vipList.find(v => v.name === card.name)?.storeHistory.includes(selectedCompany.name)) {
-        const v = vipList.find(v => v.name === card.name);
-        if (v) v.storeHistory.push(selectedCompany.name);
+      if (!card.phone.trim() && matchedVip.phone) {
+        card.phone = matchedVip.phone;
       }
 
-      card.crossVendorWarning = null;
-      renderRecipientCards();
-      validateCard(card);
-      updateSummaryOutput();
-    }
+      const stores = matchedVip.storeHistory || [];
+      if (stores.length > 0) {
+        selectCompanyByName(stores[0]);
 
-    function dismissCrossVendorVip(cardId) {
-      const card = recipientCards.find(c => c.id === cardId);
-      if (card) {
-        card.crossVendorWarning = null;
-        renderRecipientCards();
+        if (stores.length >= 1) {
+          const container = document.getElementById("candidateStoreChips");
+          container.innerHTML = "";
+          stores.forEach(sName => {
+            const btn = document.createElement("button");
+            btn.type = "button";
+            btn.onclick = () => selectCompanyByName(sName);
+            btn.className = "bg-amber-500 text-slate-950 font-black px-2.5 py-1 rounded-lg text-xs border border-amber-300 hover:bg-amber-400 shrink-0";
+            btn.innerText = sName;
+            container.appendChild(btn);
+          });
+          document.getElementById("candidateStoresContainer").classList.remove("hidden");
+        }
       }
     }
 
@@ -1052,7 +1181,7 @@
 
       const cleanPhone = card.phone.replace(/[^0-9]/g, '');
       if (cleanPhone && (cleanPhone.length < 9 || cleanPhone.length > 11)) {
-        errors.push(`🚨 전화번호 자릿수 오류 (현재 ${cleanPhone.length}자리 - 뒷자리 누락 확인!)`);
+        errors.push(`🚨 전화번호 자릿수 오류 (현재 ${cleanPhone.length}자리!)`);
       }
 
       const addr = card.address.trim();
@@ -1061,6 +1190,14 @@
         const hasRegion = /(서울|경기|인천|강원|충북|충남|전북|전남|경북|경남|제주|세종|광주|대구|대전|부산|울산)/.test(addr);
         const hasNumber = /\d+/.test(addr);
         if (!hasRegion || !hasNumber) errors.push("🚨 없는 주소이거나 번지수 누락 의심!");
+      }
+
+      // Check Cross-Vendor VIP Shield
+      if (card.name.trim() && selectedCompany) {
+        const matchedVip = vipList.find(v => v.name.includes(card.name.trim()));
+        if (matchedVip && matchedVip.storeHistory.length > 0 && !matchedVip.storeHistory.includes(selectedCompany.name)) {
+          errors.push(`🚨 [동명이인/타 업체 단골 주의!] (이전 출고 이력: ${matchedVip.storeHistory.join(', ')})`);
+        }
       }
 
       card.validationMsg = errors.join(" ");
@@ -1072,113 +1209,32 @@
       }
     }
 
-    function openVipSelectModal(cardId) {
-      activeCardIdForVip = cardId;
-      document.getElementById("vipModalVendorTitle").innerText = `⭐ [${selectedCompany.name}] 단골 불러오기`;
-      document.getElementById("vipModalSearchInput").value = "";
-      switchVipModalTab('current');
-      openModal("vipSelectModal");
-    }
-
-    let vipModalMode = 'current';
-    function switchVipModalTab(mode) {
-      vipModalMode = mode;
-      const btnCur = document.getElementById("vipTabCurrent");
-      const btnAll = document.getElementById("vipTabAll");
-      if (mode === 'current') {
-        btnCur.className = "flex-1 py-1.5 rounded-lg text-amber-300 bg-slate-800";
-        btnAll.className = "flex-1 py-1.5 rounded-lg text-slate-400";
-      } else {
-        btnAll.className = "flex-1 py-1.5 rounded-lg text-amber-300 bg-slate-800";
-        btnCur.className = "flex-1 py-1.5 rounded-lg text-slate-400";
-      }
-      renderVipModalList();
-    }
-
-    function renderVipModalList() {
-      const container = document.getElementById("vipModalListContainer");
-      container.innerHTML = "";
-
-      const query = document.getElementById("vipModalSearchInput").value.trim().toLowerCase();
-      const currentVendor = selectedCompany.name;
-
-      const filtered = vipList.filter(v => {
-        const isMatchVendor = vipModalMode === 'current'
-          ? (v.storeHistory && v.storeHistory.includes(currentVendor))
-          : true;
-
-        if (!isMatchVendor) return false;
-        if (!query) return true;
-        return v.name.toLowerCase().includes(query) || v.phone.includes(query) || v.address.toLowerCase().includes(query);
-      });
-
-      if (filtered.length === 0) {
-        container.innerHTML = `<div class="text-xs text-slate-500 text-center py-4">검색된 단골이 없습니다.</div>`;
-        return;
-      }
-
-      filtered.forEach(v => {
-        const isCurVendor = v.storeHistory && v.storeHistory.includes(currentVendor);
-        const div = document.createElement("div");
-        div.className = "bg-slate-900 p-2.5 rounded-xl border border-slate-700 flex justify-between items-center text-xs";
-        div.innerHTML = `
-          <div>
-            <div class="flex items-center gap-1.5 font-bold">
-              <span class="text-amber-300 text-sm">${escapeHtml(v.name)}</span>
-              <span class="text-slate-400 font-mono text-xs">(${escapeHtml(v.phone)})</span>
-              ${isCurVendor
-                ? `<span class="bg-emerald-950 text-emerald-300 text-[10px] px-1.5 py-0.5 rounded border border-emerald-700">🟢 [${escapeHtml(currentVendor)} 출고]</span>`
-                : `<span class="bg-amber-950 text-amber-300 text-[10px] px-1.5 py-0.5 rounded border border-amber-700">⚠️ [기존: ${escapeHtml(v.storeHistory.join(', '))}]</span>`}
-            </div>
-            <div class="text-slate-300 text-[11px] mt-0.5">${escapeHtml(v.address)}</div>
-          </div>
-          <button onclick="selectVipForCard('${escapeHtml(v.name)}')" class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold px-3 py-1.5 rounded-lg shrink-0">
-            선택
-          </button>
-        `;
-        container.appendChild(div);
-      });
-    }
-
-    function selectVipForCard(vipName) {
-      const card = recipientCards.find(c => c.id === activeCardIdForVip);
-      const v = vipList.find(item => item.name === vipName);
-      if (card && v) {
-        card.name = v.name;
-        card.phone = v.phone;
-        card.address = v.address;
-
-        if (!v.storeHistory.includes(selectedCompany.name)) {
-          card.crossVendorWarning = {
-            name: v.name,
-            phone: v.phone,
-            address: v.address,
-            existingVendor: v.storeHistory.join(', ')
-          };
-        } else {
-          card.crossVendorWarning = null;
-        }
-
-        renderRecipientCards();
-        validateCard(card);
-        updateSummaryOutput();
-      }
-      closeModal("vipSelectModal");
-    }
-
-    function searchDaumAddress(cardId) {
+    function openInPageAddressSearch(cardId) {
       if (typeof daum === 'undefined' || !daum.Postcode) {
-        alert("우편번호 서비스를 불러올 수 없습니다.");
-        return;
+        return alert("우편번호 서비스를 불러올 수 없습니다.");
       }
+
+      const element = document.getElementById('postcode-embed-container');
+      const layer = document.getElementById('postcode-layer');
+      element.innerHTML = "";
+
       new daum.Postcode({
         oncomplete: function(data) {
           const fullAddr = data.roadAddress || data.jibunAddress;
           updateCardField(cardId, 'address', fullAddr);
           const addrInput = document.getElementById(`addr_${cardId}`);
           if (addrInput) addrInput.value = fullAddr;
-        }
-      }).open();
+          closePostcodeLayer();
+        },
+        width: '100%',
+        height: '100%'
+      }).embed(element);
+
+      layer.classList.remove('hidden');
+    }
+
+    function closePostcodeLayer() {
+      document.getElementById('postcode-layer').classList.add('hidden');
     }
 
     function toggleBoxTypeItem(cardId, typeId) {
@@ -1219,27 +1275,6 @@
         const cardElem = document.createElement("div");
         cardElem.className = "bg-slate-900 p-3 rounded-xl border border-slate-700 shadow-md relative space-y-2";
 
-        // Cross-vendor Warning Banner
-        let warningHtml = "";
-        if (card.crossVendorWarning) {
-          const w = card.crossVendorWarning;
-          warningHtml = `
-            <div class="bg-amber-950/90 border-2 border-amber-500 p-2.5 rounded-xl text-amber-200 text-xs leading-relaxed space-y-1.5 shadow-lg">
-              <div class="font-bold text-amber-300">🚨 [동명이인/타 업체 단골 주의!] '${escapeHtml(w.name)}'님은 현재 선택된 [${escapeHtml(selectedCompany.name)}]에서 물건이 나간 적이 없습니다!</div>
-              <div class="text-[11px] text-slate-300">(기존 출고업체: <strong class="text-amber-400">${escapeHtml(w.existingVendor)}</strong> | ${escapeHtml(w.phone)} | ${escapeHtml(w.address)})</div>
-              <div class="font-bold text-amber-300 pt-0.5">👉 동명이인이 아닌 동일 수취인이 맞습니까?</div>
-              <div class="flex gap-2 pt-1">
-                <button type="button" onclick="applyCrossVendorVip('${card.id}')" class="flex-1 bg-amber-500 hover:bg-amber-600 text-slate-950 font-black py-1.5 rounded-lg shadow">
-                  ✅ 예, 주소 적용
-                </button>
-                <button type="button" onclick="dismissCrossVendorVip('${card.id}')" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold py-1.5 rounded-lg border border-slate-700">
-                  ❌ 아니오 (신규 입력)
-                </button>
-              </div>
-            </div>
-          `;
-        }
-
         let boxTypeBtnsHtml = `<div class="grid grid-cols-6 sm:grid-cols-12 gap-1 mb-1.5">`;
         BOX_TYPE_OPTIONS.forEach(opt => {
           const isSel = card.items.some(it => it.type === opt.id);
@@ -1278,8 +1313,8 @@
               <span class="bg-amber-400 text-slate-950 text-xs font-black px-2 py-0.5 rounded-full">${index + 1}</span>
               <span class="text-xs font-bold text-slate-200">수취인 #${index + 1}</span>
             </div>
-            <div class="flex gap-1.5">
-              <button type="button" onclick="openVipSelectModal('${card.id}')" class="bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs px-2.5 py-1 rounded-lg font-black shadow">
+            <div class="flex items-center gap-1.5">
+              <button type="button" onclick="switchTab('tabVip')" class="text-[10px] bg-amber-950 text-amber-300 px-2 py-0.5 rounded border border-amber-700 font-bold">
                 ⭐ 단골 DB 불러오기
               </button>
               <button type="button" onclick="removeRecipientCard('${card.id}')" class="text-slate-400 hover:text-rose-400 text-xs px-1.5 py-0.5 rounded">
@@ -1288,13 +1323,13 @@
             </div>
           </div>
 
-          ${warningHtml}
           <div id="alert_${card.id}">${card.validationMsg ? `<div class="bg-rose-950/80 border border-rose-600 text-rose-300 text-[11px] p-1.5 rounded-lg font-bold animate-pulse">${escapeHtml(card.validationMsg)}</div>` : ''}</div>
 
-          <div class="grid grid-cols-2 gap-2">
-            <div>
+          <div class="grid grid-cols-2 gap-2 relative">
+            <div class="relative">
               <label class="block text-[10px] text-slate-400 mb-0.5">받는사람 성명/상호 *</label>
-              <input type="text" value="${escapeHtml(card.name)}" oninput="updateCardField('${card.id}', 'name', this.value)" placeholder="예: 장영애" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs text-white font-bold">
+              <input type="text" value="${escapeHtml(card.name)}" oninput="updateCardField('${card.id}', 'name', this.value)" placeholder="예: 짱구네 또는 장영애" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs text-white font-bold">
+              <div id="autocomplete_${card.id}" class="hidden absolute left-0 right-0 top-full mt-1 bg-slate-900 border border-amber-500/50 rounded-xl shadow-2xl z-20 max-h-48 overflow-y-auto"></div>
             </div>
             <div>
               <label class="block text-[10px] text-slate-400 mb-0.5">전화번호 *</label>
@@ -1305,8 +1340,8 @@
           <div>
             <div class="flex justify-between items-center mb-0.5">
               <label class="text-[10px] text-slate-400">배송지 도로명 주소 *</label>
-              <button type="button" onclick="searchDaumAddress('${card.id}')" class="text-[10px] bg-slate-800 text-sky-400 px-2 py-0.5 rounded border border-slate-700 font-bold">
-                🔍 주소검증
+              <button type="button" onclick="openInPageAddressSearch('${card.id}')" class="text-[10px] bg-slate-800 text-sky-400 px-2 py-0.5 rounded border border-slate-700 font-bold">
+                🔍 인앱 주소검증
               </button>
             </div>
             <input type="text" id="addr_${card.id}" value="${escapeHtml(card.address)}" oninput="updateCardField('${card.id}', 'address', this.value)" placeholder="예: 서울 도봉구 마들로 11길 20 창동하나로마트..." class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs text-white">
@@ -1334,9 +1369,6 @@
       });
     }
 
-    // ==========================================
-    // 7. KAKAO RAW TEXT PARSER
-    // ==========================================
     function clearRawTextInput() { document.getElementById("rawTextInput").value = ""; }
 
     function parseRawText() {
@@ -1386,17 +1418,14 @@
         if (phone) activeCard.phone = phone;
         if (address) activeCard.address = address;
 
-        autoMatchVipWithShield(activeCard);
+        reverseBindRecipientToCompany(activeCard);
         renderRecipientCards();
         validateCard(activeCard);
         updateSummaryOutput();
-        alert("원문 자동 분석 완료되었습니다!");
+        alert("원문 자동 분석 완료!");
       }
     }
 
-    // ==========================================
-    // 8. SUMMARY OUTPUT FORMATTING
-    // ==========================================
     function updateSummaryOutput() {
       if (!selectedCompany) return;
 
@@ -1424,7 +1453,6 @@
           cardTotalBoxes += it.count;
           const isCod = it.type.startsWith("착불");
 
-          // REQUIREMENT 7: COD omits alphabet letter
           if (isCod) {
             boxTypeParts.push(`한진 ${it.type} ${it.count}건`);
           } else if (it.type === "우체국") {
@@ -1463,42 +1491,121 @@
 
       document.getElementById("summaryOutput").value = fullOutput;
 
-      if (currentPhotoFile) {
-        generateWatermarkCanvas(fullOutput);
-      }
+      if (currentPhotoFile) generateWatermarkCanvas(fullOutput);
     }
 
     function copySummaryText() {
       const text = document.getElementById("summaryOutput").value;
       navigator.clipboard.writeText(text).then(() => {
-        alert("접수 요약 텍스트가 클립보드에 복사되었습니다!");
+        alert("접수 요약 텍스트가 복사되었습니다!");
       }).catch(err => alert("복사 실패: " + err));
+
+      // Trigger Google Sheet async order logging
+      recipientCards.forEach(card => {
+        card.items.forEach(it => {
+          logOrderToSheetAsync({
+            store: selectedCompany.name,
+            carrier: "한진",
+            boxType: it.type,
+            fee: card.memo || "",
+            recipientName: card.name,
+            recipientPhone: card.phone,
+            recipientAddr: card.address,
+            item: card.itemOverride || currentSelectedCategory,
+            quantity: it.count
+          }, {
+            name: card.name,
+            phone: card.phone,
+            address: card.address,
+            store: selectedCompany.name
+          });
+        });
+      });
     }
 
-    // ==========================================
-    // 9. ACCOUNTS RECEIVABLE (💰 미수금관리)
-    // ==========================================
-    function addCurrentOrderToUnpaid() {
-      if (!selectedCompany) return;
-      const amt = parseInt(document.getElementById("unpaidAddAmountInput").value);
-      if (!amt || amt <= 0) return alert("올바른 미수금 금액을 입력하세요.");
+    function openCompanyEditModal(fIdx, cIdx) {
+      const comp = folders[fIdx].companies[cIdx];
+      document.getElementById("editCompanyFolderIdx").value = fIdx;
+      document.getElementById("editCompanyCompIdx").value = cIdx;
+      document.getElementById("editCompanyNameInput").value = comp.name;
+      document.getElementById("editCompanyPhoneInput").value = comp.phone;
+      document.getElementById("editCompanyCategoryInput").value = comp.category;
 
-      const compName = selectedCompany.name;
-      if (!unpaidLedger[compName]) {
-        unpaidLedger[compName] = { balance: 0, logs: [] };
-      }
-
-      unpaidLedger[compName].balance += amt;
-      unpaidLedger[compName].logs.unshift({
-        date: new Date().toLocaleString("ko-KR"),
-        type: "unpaid",
-        amount: amt,
-        memo: "택배 접수 수수료 외상"
+      const select = document.getElementById("editCompanyFolderSelect");
+      select.innerHTML = "";
+      folders.forEach((f, i) => {
+        const opt = document.createElement("option");
+        opt.value = i;
+        opt.innerText = f.name;
+        if (i === fIdx) opt.selected = true;
+        select.appendChild(opt);
       });
 
+      openModal("companyEditModal");
+    }
+
+    function saveCompanyEditForm() {
+      const fIdx = parseInt(document.getElementById("editCompanyFolderIdx").value);
+      const cIdx = parseInt(document.getElementById("editCompanyCompIdx").value);
+      const targetFolderIdx = parseInt(document.getElementById("editCompanyFolderSelect").value);
+
+      const newName = document.getElementById("editCompanyNameInput").value.trim();
+      const newPhone = document.getElementById("editCompanyPhoneInput").value.trim() || newName;
+      const newCategory = document.getElementById("editCompanyCategoryInput").value.trim() || "건어물";
+
+      if (!newName) return alert("공식 풀네임을 입력하세요.");
+
+      const updatedComp = {
+        shortName: newName,
+        name: newName,
+        phone: newPhone,
+        category: newCategory,
+        defaultBox: folders[fIdx].companies[cIdx].defaultBox || "B"
+      };
+
+      folders[fIdx].companies.splice(cIdx, 1);
+      folders[targetFolderIdx].companies.push(updatedComp);
+
       saveState();
-      renderUnpaidLedger();
-      alert(`[${compName}] 미수금 ${amt.toLocaleString()}원이 장부에 기록되었습니다.`);
+      renderCompanyAccordion();
+      renderFolderManager();
+      closeModal("companyEditModal");
+    }
+
+    function openFolderAddModal() {
+      const name = prompt("새 폴더 이름을 입력하세요 (예: 가락몰 - 청과2):");
+      if (name && name.trim()) {
+        folders.push({
+          id: "f_" + Date.now(),
+          name: name.trim(),
+          companies: []
+        });
+        saveState();
+        renderCompanyAccordion();
+        renderFolderManager();
+      }
+    }
+
+    function editFolderName(fIdx) {
+      const newName = prompt("변경할 폴더명을 입력하세요:", folders[fIdx].name);
+      if (newName && newName.trim()) {
+        folders[fIdx].name = newName.trim();
+        saveState();
+        renderCompanyAccordion();
+        renderFolderManager();
+      }
+    }
+
+    function deleteFolder(fIdx) {
+      if (folders[fIdx].companies.length > 0) {
+        return alert("비어있지 않은 폴더는 삭제할 수 없습니다. 먼저 소속 업체를 이동하세요.");
+      }
+      if (confirm("폴더를 삭제하시겠습니까?")) {
+        folders.splice(fIdx, 1);
+        saveState();
+        renderCompanyAccordion();
+        renderFolderManager();
+      }
     }
 
     function renderUnpaidLedger() {
@@ -1520,9 +1627,7 @@
         }
 
         item.logs.forEach(l => {
-          if (l.type === 'settle' && l.date.includes(todayStr)) {
-            todaySettled += l.amount;
-          }
+          if (l.type === 'settle' && l.date.includes(todayStr)) todaySettled += l.amount;
         });
 
         if (query && !compName.toLowerCase().includes(query)) return;
@@ -1550,7 +1655,7 @@
     }
 
     function openUnpaidSettlePrompt(compName) {
-      const amtStr = prompt(`[${compName}] 입금 차감할 금액을 입력하세요 (현재 잔액: ${unpaidLedger[compName]?.balance || 0}원):`);
+      const amtStr = prompt(`[${compName}] 입금 차감 금액:`);
       if (amtStr && parseInt(amtStr) > 0) {
         const amt = parseInt(amtStr);
         if (!unpaidLedger[compName]) unpaidLedger[compName] = { balance: 0, logs: [] };
@@ -1558,23 +1663,15 @@
         unpaidLedger[compName].balance -= amt;
         if (unpaidLedger[compName].balance < 0) unpaidLedger[compName].balance = 0;
 
-        unpaidLedger[compName].logs.unshift({
-          date: new Date().toLocaleString("ko-KR"),
-          type: "settle",
-          amount: amt,
-          memo: "입금 완납/차감 처리"
-        });
-
+        unpaidLedger[compName].logs.unshift({ date: new Date().toLocaleString("ko-KR"), type: "settle", amount: amt, memo: "입금 차감" });
         saveState();
         renderUnpaidLedger();
-        alert(`[${compName}] ${amt.toLocaleString()}원 입금 차감 처리되었습니다.`);
       }
     }
 
     function openUnpaidManualModal() {
       const select = document.getElementById("unpaidCompanySelect");
       select.innerHTML = "";
-
       folders.forEach(f => {
         f.companies.forEach(c => {
           const opt = document.createElement("option");
@@ -1583,7 +1680,6 @@
           select.appendChild(opt);
         });
       });
-
       document.getElementById("unpaidAmountInput").value = "";
       document.getElementById("unpaidMemoInput").value = "";
       openModal("unpaidManualModal");
@@ -1595,7 +1691,7 @@
       const amt = parseInt(document.getElementById("unpaidAmountInput").value);
       const memo = document.getElementById("unpaidMemoInput").value.trim() || "수동 기록";
 
-      if (!amt || amt <= 0) return alert("금액을 정확히 입력하세요.");
+      if (!amt || amt <= 0) return alert("금액을 입력하세요.");
 
       if (!unpaidLedger[compName]) unpaidLedger[compName] = { balance: 0, logs: [] };
 
@@ -1605,79 +1701,10 @@
         if (unpaidLedger[compName].balance < 0) unpaidLedger[compName].balance = 0;
       }
 
-      unpaidLedger[compName].logs.unshift({
-        date: new Date().toLocaleString("ko-KR"),
-        type: type,
-        amount: amt,
-        memo: memo
-      });
-
+      unpaidLedger[compName].logs.unshift({ date: new Date().toLocaleString("ko-KR"), type: type, amount: amt, memo: memo });
       saveState();
       renderUnpaidLedger();
       closeModal("unpaidManualModal");
-    }
-
-    // ==========================================
-    // 10. VOICE & OCR & PHOTO WATERMARK
-    // ==========================================
-    function initSpeechRecognition() {
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-      if (!SpeechRecognition) return;
-
-      recognition = new SpeechRecognition();
-      recognition.lang = 'ko-KR';
-      recognition.continuous = false;
-
-      recognition.onstart = () => {
-        isSpeechRecognizing = true;
-        document.getElementById("voiceIcon").innerText = "🔴";
-        document.getElementById("voiceText").innerText = "음성 듣는 중...";
-      };
-
-      recognition.onend = () => {
-        isSpeechRecognizing = false;
-        document.getElementById("voiceIcon").innerText = "🎤";
-        document.getElementById("voiceText").innerText = "음성으로 업체·타입·건수 말하기";
-      };
-
-      recognition.onresult = (e) => {
-        const transcript = e.results[0][0].transcript;
-        parseVoiceTranscript(transcript);
-      };
-    }
-
-    function toggleVoiceRecognition() {
-      if (!recognition) return alert("음성 인식이 지원되지 않습니다.");
-      if (isSpeechRecognizing) recognition.stop();
-      else recognition.start();
-    }
-
-    function parseVoiceTranscript(text) {
-      let t = text.trim();
-      let matchedComp = null;
-
-      folders.forEach(f => {
-        f.companies.forEach(c => {
-          if (t.includes(c.name)) matchedComp = c;
-        });
-      });
-
-      if (matchedComp) selectCompany(matchedComp);
-
-      let matchedBox = null;
-      if (t.includes("착불 삼천")) matchedBox = "착불 3000원";
-      else if (t.includes("착불 사천")) matchedBox = "착불 4000원";
-      else if (t.includes("우체국")) matchedBox = "우체국";
-      else if (t.includes("에이") || t.includes("A")) matchedBox = "A";
-      else if (t.includes("비") || t.includes("B")) matchedBox = "B";
-
-      if (matchedBox && recipientCards.length > 0) {
-        recipientCards[recipientCards.length - 1].items = [{ type: matchedBox, count: 1 }];
-        renderRecipientCards();
-        updateSummaryOutput();
-      }
-
-      document.getElementById("voiceText").innerText = `음성 인식: "${t}"`;
     }
 
     function handlePhotoSelect(event) {
@@ -1689,8 +1716,6 @@
 
       const text = document.getElementById("summaryOutput").value;
       generateWatermarkCanvas(text);
-
-      if (geminiApiKey) processGeminiOCR(currentPhotoFile);
     }
 
     function generateWatermarkCanvas(summaryText) {
@@ -1743,7 +1768,7 @@
           if (navigator.share && navigator.canShare && navigator.canShare({ files: [watermarkedFile] })) {
             try {
               await navigator.share({
-                title: "우정물류 택배 접수",
+                title: "우정물류 택배 접수 v3.5",
                 text: text,
                 files: [watermarkedFile]
               });
@@ -1754,7 +1779,7 @@
         }, "image/png");
       } else {
         if (navigator.share) {
-          try { await navigator.share({ title: "우정물류 택배 접수", text: text }); } catch (err) {}
+          try { await navigator.share({ title: "우정물류 택배 접수 v3.5", text: text }); } catch (err) {}
         } else {
           alert("요약 텍스트가 복사되었습니다!");
         }
@@ -1766,68 +1791,6 @@
       saveState();
       closeModal("geminiModal");
       alert("Gemini API 키가 저장되었습니다.");
-    }
-
-    async function processGeminiOCR(file) {
-      const statusBox = document.getElementById("ocrStatus");
-      const statusMsg = document.getElementById("ocrStatusMsg");
-      statusBox.classList.remove("hidden");
-      statusMsg.innerText = "Gemini AI가 사진 속 전표를 분석 중입니다...";
-
-      try {
-        const base64Image = await fileToBase64(file);
-        const prompt = `전표 사진에서 수취인 정보(이름, 전화번호, 주소, 수량, 규격)를 JSON 배열로 추출해 주세요:
-[
-  { "name": "이름", "phone": "010-0000-0000", "address": "주소", "boxType": "B", "count": 1 }
-]`;
-
-        let extractedJson = await callGeminiAPI("gemini-2.5-flash", base64Image, prompt);
-        if (!extractedJson) extractedJson = await callGeminiAPI("gemini-2.0-flash", base64Image, prompt);
-
-        if (extractedJson && Array.isArray(extractedJson) && extractedJson.length > 0) {
-          recipientCards = [];
-          extractedJson.forEach(item => {
-            addRecipientCard({
-              name: item.name || "",
-              phone: item.phone || "",
-              address: item.address || "",
-              items: [{ type: item.boxType || selectedCompany.defaultBox, count: item.count || 1 }]
-            });
-          });
-          statusMsg.innerText = "Gemini AI 추출 완료!";
-          setTimeout(() => statusBox.classList.add("hidden"), 3000);
-        }
-      } catch (err) {
-        statusMsg.innerText = "Gemini AI 분석 실패";
-        setTimeout(() => statusBox.classList.add("hidden"), 3000);
-      }
-    }
-
-    async function callGeminiAPI(modelName, base64Image, prompt) {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${geminiApiKey}`;
-      const res = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }, { inline_data: { mime_type: "image/jpeg", data: base64Image } }] }]
-        })
-      });
-      if (!res.ok) return null;
-      const data = await res.json();
-      const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (!rawText) return null;
-
-      const cleanJsonStr = rawText.replace(/```json/g, "").replace(/```/g, "").trim();
-      return JSON.parse(cleanJsonStr);
-    }
-
-    function fileToBase64(file) {
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result.split(',')[1]);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
     }
 
     function saveOrderToHistory() {
@@ -1864,12 +1827,8 @@
 
       saveState();
       renderVipList();
-      renderHistoryList();
     }
 
-    // ==========================================
-    // 11. FOLDER & VIP MANAGEMENT
-    // ==========================================
     function renderVipList() {
       const container = document.getElementById("vipListContainer");
       container.innerHTML = "";
@@ -1955,7 +1914,10 @@
           companyListHtml += `
             <div class="bg-slate-950 p-1.5 rounded-lg border border-slate-800 flex justify-between items-center text-[11px]">
               <span class="font-bold text-amber-300 truncate">${escapeHtml(c.name)}</span>
-              <button onclick="removeCompanyFromFolder(${fIdx}, ${cIdx})" class="text-rose-400 hover:text-rose-300 font-bold ml-1">✕</button>
+              <div class="flex gap-1">
+                <button onclick="openCompanyEditModal(${fIdx}, ${cIdx})" class="text-amber-300 font-bold">✏️</button>
+                <button onclick="removeCompanyFromFolder(${fIdx}, ${cIdx})" class="text-rose-400 font-bold">✕</button>
+              </div>
             </div>
           `;
         });
@@ -1963,10 +1925,10 @@
 
         div.innerHTML = `
           <div class="flex justify-between items-center border-b border-slate-800 pb-2">
-            <span class="font-black text-amber-400 text-sm">📁 ${escapeHtml(f.name)} (총 ${f.companies.length}개)</span>
+            <span class="font-black text-amber-400 text-sm">📁 ${escapeHtml(f.name)} (${f.companies.length}개)</span>
             <div class="flex gap-1">
-              <button onclick="promptAddCompanyToFolder(${fIdx})" class="bg-amber-500 text-slate-950 font-bold px-2 py-0.5 rounded text-[11px]">+ 업체추가</button>
-              <button onclick="deleteFolder(${fIdx})" class="bg-rose-950 text-rose-300 px-2 py-0.5 rounded text-[11px] border border-rose-800">삭제</button>
+              <button onclick="editFolderName(${fIdx})" class="bg-slate-800 text-slate-200 px-2 py-0.5 rounded text-[11px]">✏️ 수정</button>
+              <button onclick="deleteFolder(${fIdx})" class="bg-rose-950 text-rose-300 px-2 py-0.5 rounded text-[11px] border border-rose-800">🗑️ 삭제</button>
             </div>
           </div>
           ${companyListHtml}
@@ -1975,60 +1937,13 @@
       });
     }
 
-    function openFolderAddModal() {
-      const name = prompt("새 폴더 이름을 입력하세요 (예: 가락몰 - 청과2):");
-      if (name && name.trim()) {
-        folders.push({
-          id: "f_" + Date.now(),
-          name: name.trim(),
-          companies: []
-        });
-        saveState();
-        renderFolderTabs();
-        renderFolderManager();
-      }
-    }
-
-    function deleteFolder(fIdx) {
-      if (confirm("폴더를 삭제하시겠습니까? 소속 업체도 함께 삭제됩니다.")) {
-        folders.splice(fIdx, 1);
-        saveState();
-        renderFolderTabs();
-        renderFolderManager();
-      }
-    }
-
-    function promptAddCompanyToFolder(fIdx) {
-      const name = prompt("추가할 정식 업체 풀네임을 입력하세요 (예: 수도건해, 백두산상회):");
-      if (name && name.trim()) {
-        const phone = prompt("업체 연락처를 입력하세요 (미입력 시 풀네임 적용):") || name.trim();
-        const category = prompt("대표 품목을 입력하세요 (예: 김, 과일, 건어물):") || "건어물";
-
-        folders[fIdx].companies.push({
-          shortName: name.trim(),
-          name: name.trim(),
-          category: category.trim(),
-          phone: phone.trim(),
-          defaultBox: "B"
-        });
-
-        saveState();
-        renderFolderManager();
-        renderCompanyButtons();
-      }
-    }
-
     function removeCompanyFromFolder(fIdx, cIdx) {
       if (confirm("업체를 삭제하시겠습니까?")) {
         folders[fIdx].companies.splice(cIdx, 1);
         saveState();
         renderFolderManager();
-        renderCompanyButtons();
+        renderCompanyAccordion();
       }
-    }
-
-    function renderHistoryList() {
-      // Unused legacy container stub if needed
     }
 
     function escapeHtml(str) {
