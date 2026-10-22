@@ -1,4 +1,4 @@
-const CACHE_NAME = 'woojung-logistics-v2';
+const CACHE_NAME = 'woojung-v5-' + Date.now();
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -27,7 +27,7 @@ self.addEventListener('activate', (event) => {
       return Promise.all(
         cacheNames.map((cache) => {
           if (cache !== CACHE_NAME) {
-            console.log('Deleting old cache:', cache);
+            console.log('Force deleting old cache:', cache);
             return caches.delete(cache);
           }
         })
