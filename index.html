@@ -842,6 +842,8 @@
     let learnedSenders = [];
     let geminiApiKey = "";
     let isMultiMode = false;
+    let cachedOrderLogs = [];
+    let isTodayFilterOnly = false;
 
     let selectedCompany = null;
     let currentSelectedCategory = "";
@@ -1464,9 +1466,6 @@ ${JSON.stringify(safeCustomers.slice(0, 50))}`;
     window.renderOrderLogsTable = renderOrderLogsTable;
     window.toggleTodayLogsFilter = toggleTodayLogsFilter;
     window.cancelOrderLogRow = cancelOrderLogRow;
-
-    let cachedOrderLogs = [];
-    let isTodayFilterOnly = false;
 
     function switchTab(tabId) {
       ['tabOrder', 'tabUnpaid', 'tabVip', 'tabFolder', 'tabLogs'].forEach(id => {
@@ -2923,7 +2922,7 @@ ${JSON.stringify(safeCustomers.slice(0, 50))}`;
 
           const prompt = `이 사진은 한국 택배 전표 또는 손글씨 수기 명세서입니다. 사진 속에 있는 모든 수취인(받는 사람)의 정보를 추출하세요.
 한 장에 여러 수취인이 적혀 있을 경우 각각 분리하여 JSON 배열 형태로만 정확히 반환하세요.
-응답은 오직 아래 형태의 JSON 배열이어야 하며, 마크다운(```json) 없이 순수 JSON만 반환하세요:
+응답은 오직 아래 형태의 JSON 배열이어야 하며, 마크다운(\`\`\`json) 없이 순수 JSON만 반환하세요:
 [
   {
     "name": "수취인 이름 또는 상호명",
