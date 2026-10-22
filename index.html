@@ -12,6 +12,8 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Daum Postcode API -->
   <script src="https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
+  <!-- SheetJS CDN for Excel import -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <style>
     body {
       touch-action: manipulation;
@@ -37,18 +39,15 @@
   <header class="bg-sky-700 text-white p-3 shadow-lg sticky top-0 z-40 flex justify-between items-center">
     <div class="flex items-center space-x-2">
       <h1 class="text-base font-black tracking-tight flex items-center gap-1.5">
-        <span>📦</span> 우정물류 택배 접수 v3.5
+        <span>📦</span> 우정물류 택배 접수 v4.0
       </h1>
     </div>
     <div class="flex items-center space-x-1.5">
-      <button onclick="triggerSyncAllToSheet()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs px-2.5 py-1.5 rounded-lg border border-amber-300 flex items-center gap-1 font-black shadow active:scale-95 transition">
-        <span>⬆️</span><span>시트로 전체 저장</span>
-      </button>
-      <button onclick="triggerManualSync()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-2.5 py-1.5 rounded-lg border border-emerald-400 flex items-center gap-1 font-bold shadow active:scale-95 transition">
-        <span>🔄</span><span>불러오기</span>
-      </button>
       <button onclick="openModal('geminiModal')" class="bg-sky-800 hover:bg-sky-900 text-xs px-2.5 py-1.5 rounded-lg border border-sky-500 flex items-center gap-1 font-semibold">
         <span>🤖 AI 설정</span>
+      </button>
+      <button onclick="openModal('settingsModal')" title="미니 설정" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm p-1.5 rounded-lg border border-slate-600 flex items-center justify-center active:scale-95 transition">
+        ⚙️
       </button>
     </div>
   </header>
@@ -93,12 +92,12 @@
         <div class="grid grid-cols-2 gap-2">
           <label class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs py-2.5 px-3 rounded-xl font-bold cursor-pointer flex justify-center items-center gap-1.5 shadow active:scale-[0.99] transition">
             <span>🖼️</span> [🖼️ 사진불러오기]
-            <input type="file" id="albumInput" accept="image/*" multiple onchange="handlePhotoSelect(event)" class="hidden">
+            <input type="file" id="gallery-file-input" accept="image/*,image/jpeg,image/png,image/heic,image/webp" multiple onchange="handlePhotoSelect(event)" class="hidden">
           </label>
 
           <label class="bg-sky-600 hover:bg-sky-700 text-white text-xs py-2.5 px-3 rounded-xl font-bold cursor-pointer flex justify-center items-center gap-1.5 shadow active:scale-[0.99] transition">
             <span>📷</span> [📷 사진촬영]
-            <input type="file" id="cameraInput" accept="image/*" capture="environment" onchange="handlePhotoSelect(event)" class="hidden">
+            <input type="file" id="camera-file-input" accept="image/*" capture="environment" onchange="handlePhotoSelect(event)" class="hidden">
           </label>
         </div>
 
@@ -139,24 +138,13 @@
           <!-- Dynamic recipient cards -->
         </div>
 
-        <!-- Item Tag Manager & Fast Chips Bar -->
-        <div class="mt-2 pt-2 border-t border-slate-700/60">
-          <div class="flex justify-between items-center mb-1">
-            <span class="text-[11px] font-bold text-amber-300 flex items-center gap-1">
-              <span>🏷️</span> 원터치 품목 선택
-            </span>
-            <button onclick="openItemEditModal()" class="text-[10px] bg-slate-700 hover:bg-slate-600 text-amber-300 px-2 py-0.5 rounded-lg border border-slate-600 font-bold">
-              ✏️ 품목 편집
-            </button>
-          </div>
-          <div id="itemChipsContainer" class="flex gap-1.5 overflow-x-auto pb-1 text-xs">
-            <!-- JS item chips -->
-          </div>
-        </div>
 
         <div id="addRecipientBtnContainer" class="hidden mt-2 flex gap-2">
           <button onclick="addRecipientCard()" class="flex-1 bg-slate-700 hover:bg-slate-600 text-amber-300 font-bold text-xs py-2.5 px-3 rounded-xl border border-amber-500/30 flex justify-center items-center gap-1 shadow">
             <span>➕</span> 수취인 카드 추가
+          </button>
+          <button onclick="startNewOrderKeepStore()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs py-2.5 px-3 rounded-xl shadow border border-amber-300">
+            ✨ 새 접수 시작 (업체 유지)
           </button>
           <button onclick="clearAllRecipients()" class="bg-rose-950 hover:bg-rose-900 text-rose-300 text-xs py-2.5 px-3 rounded-xl border border-rose-800/50">
             전체 초기화
@@ -262,19 +250,9 @@
 
         <textarea id="summaryOutput" readonly rows="8" class="w-full bg-slate-950 border border-slate-700 text-emerald-400 font-mono text-xs rounded-xl p-3 focus:outline-none leading-relaxed shadow-inner" placeholder="요약 텍스트가 실시간 출력됩니다."></textarea>
 
-        <div id="photoPreviewArea" class="hidden">
-          <div class="text-xs text-slate-400 font-bold mb-1 flex justify-between items-center">
-            <span>📷 워터마크 합성 미리보기</span>
-            <span class="text-[10px] text-amber-400">하단 검은 배경 + 굵은 노란색 글씨 합성 완료</span>
-          </div>
-          <div class="relative bg-slate-950 rounded-xl overflow-hidden border border-slate-700">
-            <canvas id="watermarkCanvas" class="w-full h-auto block"></canvas>
-          </div>
-        </div>
-
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          <button onclick="shareKakaoWithWatermark()" class="w-full bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-600 hover:to-amber-700 text-slate-950 font-black text-xs sm:text-sm py-3.5 px-3 rounded-xl shadow-lg border border-yellow-300/40 flex justify-center items-center gap-1.5 active:scale-[0.99] transition">
-            <span class="text-base">🚀</span> 워터마크 사진 + 텍스트 카톡 공유
+          <button onclick="sharePhotoAndTextKakao()" class="w-full bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-600 hover:to-amber-700 text-slate-950 font-black text-xs sm:text-sm py-3.5 px-3 rounded-xl shadow-lg border border-yellow-300/40 flex justify-center items-center gap-1.5 active:scale-[0.99] transition">
+            <span class="text-base">📷</span> 사진 + 텍스트 카톡 전송
           </button>
           <button onclick="shareTextOnlyKakao()" class="w-full bg-slate-700 hover:bg-slate-600 text-amber-300 font-bold text-xs sm:text-sm py-3.5 px-3 rounded-xl shadow border border-slate-600 flex justify-center items-center gap-1.5 active:scale-[0.99] transition">
             <span class="text-base">💬</span> 사진 없이 텍스트만 카톡 전송
@@ -485,6 +463,64 @@
       <div class="flex justify-end gap-2 pt-2">
         <button onclick="closeModal('companyEditModal')" class="bg-slate-700 text-xs px-3 py-2 rounded-lg text-slate-300">취소</button>
         <button onclick="saveCompanyEditForm()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-bold px-4 py-2 rounded-lg">저장하기</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings Modal (⚙️ 미니 설정 모달) -->
+  <div id="settingsModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-slate-800 border border-slate-700 rounded-2xl max-w-md w-full p-4 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+      <div class="flex justify-between items-center border-b border-slate-700 pb-2">
+        <h3 class="text-sm font-bold text-amber-400 flex items-center gap-1.5">
+          <span>⚙️</span> 미니 설정 & 구글 시트 연동 센터
+        </h3>
+        <button onclick="closeModal('settingsModal')" class="text-slate-400 hover:text-white text-lg">&times;</button>
+      </div>
+
+      <!-- 구글 시트 연동 센터 -->
+      <div class="p-3 bg-slate-900 rounded-xl border border-slate-700 space-y-2.5">
+        <h4 class="text-xs font-bold text-sky-400 flex items-center gap-1">
+          <span>📊</span> 구글 시트 양방향 동기화
+        </h4>
+        <div class="text-[10px] text-slate-400 font-mono break-all">
+          GAS API: https://script.google.com/macros/s/AKfycbxSYVAFQw1x...
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <button onclick="confirmAndSyncAllToSheet()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs py-2.5 px-2 rounded-xl border border-amber-300 shadow active:scale-95 transition">
+            ⬆️ 시트로 전체 저장
+          </button>
+          <button onclick="triggerManualSync()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2.5 px-2 rounded-xl border border-emerald-500 shadow active:scale-95 transition">
+            🔄 시트에서 불러오기
+          </button>
+        </div>
+      </div>
+
+      <!-- n-Focus 엑셀 대량 연동 -->
+      <div class="p-3 bg-slate-900 rounded-xl border border-slate-700 space-y-2">
+        <h4 class="text-xs font-bold text-amber-300 flex items-center gap-1">
+          <span>📂</span> n-Focus 엑셀 대량 연동 (10월 한진)
+        </h4>
+        <p class="text-[11px] text-slate-300 leading-relaxed">
+          한진/n-Focus 엑셀 파일을 업로드하여 수하인명, 전화번호, 주소를 출고 DB 및 구글 시트로 일괄 가져옵니다.
+        </p>
+        <label class="block w-full bg-slate-800 hover:bg-slate-700 text-amber-300 border border-dashed border-amber-500/50 rounded-xl text-xs py-2.5 text-center font-bold cursor-pointer">
+          <span>📂 한진 10월 엑셀 파일 선택</span>
+          <input type="file" id="nFocusExcelInput" accept=".xlsx, .xls, .csv" onchange="handleExcelUpload(event)" class="hidden">
+        </label>
+      </div>
+
+      <!-- 응급 조치 -->
+      <div class="p-3 bg-slate-900 rounded-xl border border-slate-700 space-y-2">
+        <h4 class="text-xs font-bold text-rose-400 flex items-center gap-1">
+          <span>🧹</span> 시스템 응급 조치
+        </h4>
+        <button onclick="clearLocalCacheAndRestart()" class="w-full bg-rose-950 hover:bg-rose-900 text-rose-300 font-bold text-xs py-2 rounded-xl border border-rose-800/80">
+          🧹 로컬 캐시 비우기 (클린 재시작)
+        </button>
+      </div>
+
+      <div class="flex justify-end pt-1">
+        <button onclick="closeModal('settingsModal')" class="bg-slate-700 text-xs px-4 py-2 rounded-xl text-slate-300 font-bold">닫기</button>
       </div>
     </div>
   </div>
@@ -927,6 +963,12 @@
       alert(`✅ 구글 시트 동기화 완료!\n- 동기화 시각: ${syncTime}\n- 업체: ${stores ? stores.length : 0}곳\n- 단골: ${customers ? customers.length : 0}명`);
     }
 
+    async function confirmAndSyncAllToSheet() {
+      if (confirm("홈페이지의 거래처와 출고 DB로 구글 시트를 업데이트하시겠습니까?\n출고 장부는 안전하게 보존됩니다.")) {
+        await triggerSyncAllToSheet();
+      }
+    }
+
     async function triggerSyncAllToSheet() {
       const allStores = [];
       folders.forEach(f => {
@@ -952,6 +994,72 @@
 
       await syncAllToSheetAsync(allStores, allCustomers);
       alert("✅ 홈페이지 내용이 구글 시트에 완벽히 저장되었습니다!");
+    }
+
+    function handleExcelUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      if (typeof XLSX === 'undefined') {
+        return alert("엑셀 라이브러리를 로드하지 못했습니다.");
+      }
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const data = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(data, { type: 'array' });
+          const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+          const rows = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+
+          if (rows.length <= 1) return alert("엑셀 내 데이터가 존재하지 않습니다.");
+
+          let addedCount = 0;
+          const headers = rows[0].map(h => String(h || '').trim());
+          const nameIdx = headers.findIndex(h => h.includes("수하인") || h.includes("받는") || h.includes("이름"));
+          const phoneIdx = headers.findIndex(h => h.includes("전화") || h.includes("연락처") || h.includes("핸드폰"));
+          const addrIdx = headers.findIndex(h => h.includes("주소") || h.includes("배송지"));
+
+          for (let i = 1; i < rows.length; i++) {
+            const row = rows[i];
+            if (!row || row.length === 0) continue;
+
+            const name = nameIdx >= 0 ? String(row[nameIdx] || '').trim() : String(row[0] || '').trim();
+            const phone = phoneIdx >= 0 ? String(row[phoneIdx] || '').trim() : String(row[1] || '').trim();
+            const address = addrIdx >= 0 ? String(row[addrIdx] || '').trim() : String(row[2] || '').trim();
+
+            if (name) {
+              const existingIdx = vipList.findIndex(v => v.name === name || (phone && v.phone && v.phone === phone));
+              if (existingIdx >= 0) {
+                if (address) vipList[existingIdx].address = address;
+                if (phone) vipList[existingIdx].phone = phone;
+              } else {
+                vipList.unshift({
+                  name,
+                  phone,
+                  address,
+                  storeHistory: selectedCompany ? [selectedCompany.name] : []
+                });
+              }
+              addedCount++;
+            }
+          }
+
+          saveState();
+          renderVipList();
+          alert(`✅ n-Focus 엑셀 ${addedCount}건의 데이터가 출고 DB로 성공적으로 반영되었습니다!`);
+        } catch (err) {
+          alert("엑셀 파일 파싱 오류: " + err.message);
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    function clearLocalCacheAndRestart() {
+      if (confirm("로컬 캐시를 초기화하고 클린 재시작하시겠습니까?")) {
+        localStorage.clear();
+        location.reload();
+      }
     }
 
     // Speech Recognition
@@ -1042,6 +1150,30 @@
       }
     }
 
+    window.addEventListener("online", () => {
+      processOfflineOrderQueue();
+    });
+
+    async function processOfflineOrderQueue() {
+      const queue = JSON.parse(localStorage.getItem("offline_order_queue") || "[]");
+      if (queue.length === 0) return;
+
+      const remaining = [];
+      for (const item of queue) {
+        try {
+          await fetch("https://script.google.com/macros/s/AKfycbxSYVAFQw1x_YyfQ6nkk16v5s83wacdVOTiMHJSsU5S6Z4qvLNrcxHAY0aqZsQWaLU64A/exec", {
+            method: "POST",
+            mode: "no-cors",
+            headers: { "Content-Type": "text/plain;charset=utf-8" },
+            body: JSON.stringify(item)
+          });
+        } catch (e) {
+          remaining.push(item);
+        }
+      }
+      localStorage.setItem("offline_order_queue", JSON.stringify(remaining));
+    }
+
     window.addEventListener("DOMContentLoaded", () => {
       loadAppState();
       renderCompanyAccordion();
@@ -1059,12 +1191,17 @@
       if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('sw.js').catch(() => {});
       }
+
+      processOfflineOrderQueue();
     });
 
     // Make global handlers for window
     window.toggleMultiMode = toggleMultiMode;
     window.triggerManualSync = triggerManualSync;
     window.triggerSyncAllToSheet = triggerSyncAllToSheet;
+    window.confirmAndSyncAllToSheet = confirmAndSyncAllToSheet;
+    window.handleExcelUpload = handleExcelUpload;
+    window.clearLocalCacheAndRestart = clearLocalCacheAndRestart;
     window.toggleVoiceRecognition = toggleVoiceRecognition;
     window.switchTab = switchTab;
     window.openModal = openModal;
@@ -1080,6 +1217,7 @@
     window.addRecipientCard = addRecipientCard;
     window.removeRecipientCard = removeRecipientCard;
     window.clearAllRecipients = clearAllRecipients;
+    window.startNewOrderKeepStore = startNewOrderKeepStore;
     window.updateCardField = updateCardField;
     window.openInPageAddressSearch = openInPageAddressSearch;
     window.closePostcodeLayer = closePostcodeLayer;
@@ -1105,7 +1243,8 @@
     window.selectUnpaidCompany = selectUnpaidCompany;
     window.setUnpaidType = setUnpaidType;
     window.handlePhotoSelect = handlePhotoSelect;
-    window.shareKakaoWithWatermark = shareKakaoWithWatermark;
+    window.sharePhotoAndTextKakao = sharePhotoAndTextKakao;
+    window.shareKakaoWithWatermark = sharePhotoAndTextKakao;
     window.shareTextOnlyKakao = shareTextOnlyKakao;
     window.saveGeminiApiKey = saveGeminiApiKey;
     window.testGeminiKey = testGeminiKey;
@@ -1113,6 +1252,7 @@
     window.editVipModal = editVipModal;
     window.saveVipForm = saveVipForm;
     window.deleteVip = deleteVip;
+    window.applyVipToOrderForm = applyVipToOrderForm;
     window.formatVipPhoneInput = formatVipPhoneInput;
     window.openInPageAddressSearchForVipModal = openInPageAddressSearchForVipModal;
     window.setVipItemChip = setVipItemChip;
@@ -1391,21 +1531,27 @@
     }
 
     function renderItemChips() {
-      const container = document.getElementById("itemChipsContainer");
-      container.innerHTML = "";
+      recipientCards.forEach(card => {
+        const container = document.getElementById(`itemChipsContainer_${card.id}`);
+        if (!container) return;
+        container.innerHTML = "";
 
-      itemChips.forEach(chip => {
-        const isSel = currentSelectedCategory === chip;
-        const btn = document.createElement("button");
-        btn.type = "button";
-        btn.onclick = () => selectItemChip(chip);
-        btn.className = `px-2.5 py-1 rounded-xl font-bold border shrink-0 transition ${
-          isSel
-            ? "bg-amber-400 text-slate-950 border-amber-300 shadow ring-1 ring-amber-300"
-            : "bg-slate-900 text-slate-300 border-slate-700 hover:bg-slate-800"
-        }`;
-        btn.innerText = chip;
-        container.appendChild(btn);
+        itemChips.forEach(chip => {
+          const isSel = (card.itemOverride || currentSelectedCategory) === chip;
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.onclick = () => {
+            updateCardField(card.id, 'itemOverride', chip);
+            selectItemChip(chip);
+          };
+          btn.className = `px-2 py-0.5 rounded-lg font-bold border shrink-0 transition text-[10px] ${
+            isSel
+              ? "bg-amber-400 text-slate-950 border-amber-300 shadow ring-1 ring-amber-300"
+              : "bg-slate-950 text-slate-300 border-slate-800 hover:bg-slate-800"
+          }`;
+          btn.innerText = chip;
+          container.appendChild(btn);
+        });
       });
     }
 
@@ -1731,8 +1877,18 @@
       }
     }
 
+    function startNewOrderKeepStore() {
+      recipientCards = [];
+      addRecipientCard();
+      const rawText = document.getElementById("rawTextInput");
+      if (rawText) rawText.value = "";
+      alert("✨ 현재 선택된 업체를 유지한 채 수취인 카드가 초기화되었습니다!");
+    }
+
     function validateCard(card) {
       const errors = [];
+      const warnings = [];
+
       if (!card.name.trim()) errors.push("🚨 받는사람 [이름] 누락!");
       if (!card.phone.trim()) errors.push("🚨 받는사람 [연락처] 누락!");
       if (!card.address.trim()) errors.push("🚨 받는사람 [주소] 누락!");
@@ -1740,6 +1896,28 @@
       const cleanPhone = card.phone.replace(/[^0-9]/g, '');
       if (cleanPhone && (cleanPhone.length < 9 || cleanPhone.length > 11)) {
         errors.push(`🚨 전화번호 자릿수 오류 (현재 ${cleanPhone.length}자리!)`);
+      }
+
+      // Check same-day duplicate order warning
+      const now = new Date();
+      const yyyy = now.getFullYear();
+      const mm = String(now.getMonth() + 1).padStart(2, '0');
+      const dd = String(now.getDate()).padStart(2, '0');
+      const todayYmd = `${yyyy}-${mm}-${dd}`;
+
+      const duplicateLog = cachedOrderLogs.find(l => {
+        const rawTS = String(l.timestamp || l.date || "");
+        const match = rawTS.match(/(\d{4}-\d{2}-\d{2})/);
+        const logYmd = match ? match[1] : rawTS.substring(0, 10);
+        if (logYmd !== todayYmd) return false;
+
+        const sameName = card.name.trim() && l.recipientName === card.name.trim();
+        const samePhone = cleanPhone && l.recipientPhone.replace(/[^0-9]/g, '') === cleanPhone;
+        return sameName || samePhone;
+      });
+
+      if (duplicateLog) {
+        warnings.push(`⚠️ [오늘 이미 접수된 고객입니다!] (${duplicateLog.timestamp || ''} / ${duplicateLog.store || ''})`);
       }
 
       const addr = card.address.trim();
@@ -1758,12 +1936,17 @@
         }
       }
 
-      card.validationMsg = errors.join(" ");
+      card.validationMsg = [...errors, ...warnings].join(" ");
       const alertElem = document.getElementById(`alert_${card.id}`);
       if (alertElem) {
-        alertElem.innerHTML = errors.length > 0
-          ? `<div class="bg-rose-950/80 border border-rose-600 text-rose-300 text-[11px] p-1.5 rounded-lg font-bold animate-pulse">${escapeHtml(card.validationMsg)}</div>`
-          : ``;
+        let html = "";
+        if (errors.length > 0) {
+          html += `<div class="bg-rose-950/80 border border-rose-600 text-rose-300 text-[11px] p-1.5 rounded-lg font-bold animate-pulse mb-1">${escapeHtml(errors.join(" "))}</div>`;
+        }
+        if (warnings.length > 0) {
+          html += `<div class="bg-amber-950/90 border border-amber-500 text-amber-300 text-[11px] p-1.5 rounded-lg font-bold animate-pulse">${escapeHtml(warnings.join(" "))}</div>`;
+        }
+        alertElem.innerHTML = html;
       }
     }
 
@@ -1940,6 +2123,21 @@
             ${selectedItemsHtml}
           </div>
 
+          <!-- Item Tag Manager & Fast Chips Bar Positioned Directly Below Item Box -->
+          <div class="pt-1 border-t border-slate-800">
+            <div class="flex justify-between items-center mb-1">
+              <span class="text-[10px] font-bold text-amber-300 flex items-center gap-1">
+                <span>🏷️</span> 원터치 품목 선택
+              </span>
+              <button type="button" onclick="openItemEditModal()" class="text-[9px] bg-slate-800 hover:bg-slate-700 text-amber-300 px-1.5 py-0.5 rounded border border-slate-700 font-bold">
+                ✏️ 품목 편집
+              </button>
+            </div>
+            <div id="itemChipsContainer_${card.id}" class="flex gap-1 overflow-x-auto pb-1 text-[11px]">
+              <!-- JS item chips -->
+            </div>
+          </div>
+
           <div class="grid grid-cols-2 gap-2">
             <div>
               <label class="block text-[10px] text-slate-400 mb-0.5">개별 품목 오버라이드 (선택)</label>
@@ -1954,6 +2152,8 @@
 
         container.appendChild(cardElem);
       });
+
+      renderItemChips();
     }
 
     function clearRawTextInput() { document.getElementById("rawTextInput").value = ""; }
@@ -2088,8 +2288,6 @@
       }
 
       document.getElementById("summaryOutput").value = fullOutput;
-
-      if (currentPhotoFile) generateWatermarkCanvas(fullOutput);
     }
 
     function validateActualSenderGuard() {
@@ -2487,14 +2685,10 @@
     }
 
     async function handlePhotoSelect(event) {
-      const files = Array.from(event.target.files || []);
+      const files = Array.from(event.target.files || []).slice(0, 10);
       if (files.length === 0) return;
 
       currentPhotoFile = files[0];
-      document.getElementById("photoPreviewArea").classList.remove("hidden");
-
-      const text = document.getElementById("summaryOutput").value;
-      generateWatermarkCanvas(text);
 
       if (geminiApiKey && geminiApiKey.startsWith("AIzaSy")) {
         await runGeminiVisionOCRQueue(files);
@@ -2594,41 +2788,6 @@
       });
     }
 
-    function generateWatermarkCanvas(summaryText) {
-      if (!currentPhotoFile) return;
-
-      const img = new Image();
-      img.src = URL.createObjectURL(currentPhotoFile);
-      img.onload = () => {
-        const canvas = document.getElementById("watermarkCanvas");
-        const ctx = canvas.getContext("2d");
-
-        const originalWidth = img.width;
-        const originalHeight = img.height;
-
-        const lines = summaryText.split("\n");
-        const fontSize = Math.max(20, Math.floor(originalWidth * 0.035));
-        const lineHeight = Math.floor(fontSize * 1.4);
-        const bannerPadding = Math.floor(fontSize * 1.2);
-        const bannerHeight = (lines.length * lineHeight) + (bannerPadding * 2);
-
-        canvas.width = originalWidth;
-        canvas.height = originalHeight + bannerHeight;
-
-        ctx.drawImage(img, 0, 0, originalWidth, originalHeight);
-        ctx.fillStyle = "#090d16";
-        ctx.fillRect(0, originalHeight, originalWidth, bannerHeight);
-
-        ctx.fillStyle = "#facc15";
-        ctx.font = `bold ${fontSize}px sans-serif`;
-        ctx.textBaseline = "top";
-
-        lines.forEach((line, index) => {
-          const y = originalHeight + bannerPadding + (index * lineHeight);
-          ctx.fillText(line, bannerPadding, y);
-        });
-      };
-    }
 
     async function shareTextOnlyKakao() {
       if (!validateActualSenderGuard()) return;
@@ -2650,38 +2809,24 @@
       }
     }
 
-    async function shareKakaoWithWatermark() {
+    async function sharePhotoAndTextKakao() {
       if (!validateActualSenderGuard()) return;
 
       const text = document.getElementById("summaryOutput").value;
+      await navigator.clipboard.writeText(text).catch(() => {});
       autoLearnRecipients();
 
-      const canvas = document.getElementById("watermarkCanvas");
-      if (currentPhotoFile && canvas) {
-        canvas.toBlob(async (blob) => {
-          const watermarkedFile = new File([blob], "woojung_receipt_watermarked.png", { type: "image/png" });
-
-          if (navigator.share && navigator.canShare && navigator.canShare({ files: [watermarkedFile] })) {
-            try {
-              await navigator.share({
-                title: "우정물류 택배 전표 사진",
-                files: [watermarkedFile]
-              });
-            } catch (err) {}
-          }
-
-          await navigator.clipboard.writeText(text).catch(() => {});
-          if (navigator.share) {
-            try {
-              await navigator.share({
-                title: "우정물류 택배 접수 요약",
-                text: text
-              });
-            } catch (err) {}
-          } else {
-            alert("🚀 사진 공유 완료 후 요약 텍스트가 복사되었습니다!");
-          }
-        }, "image/png");
+      if (currentPhotoFile) {
+        if (navigator.share && navigator.canShare && navigator.canShare({ files: [currentPhotoFile] })) {
+          try {
+            await navigator.share({
+              title: "우정물류 택배 전표 원본 사진",
+              files: [currentPhotoFile]
+            });
+          } catch (err) {}
+        } else {
+          alert("📷 요약 텍스트 복사 완료! 전표 사진을 카톡방에 첨부하여 전송하세요.");
+        }
       } else {
         shareTextOnlyKakao();
       }
@@ -2785,30 +2930,58 @@
 
     function renderVipList() {
       const container = document.getElementById("vipListContainer");
+      if (!container) return;
       container.innerHTML = "";
 
       const query = document.getElementById("vipSearchInput").value.trim().toLowerCase();
+      const queryCho = getChoseong(query);
+
       const filtered = vipList.filter(v => {
         if (!query) return true;
-        return v.name.toLowerCase().includes(query) || v.phone.includes(query) || v.address.toLowerCase().includes(query) || v.storeHistory.some(s => s.toLowerCase().includes(query));
+        const nameCho = getChoseong((v.name || '').toLowerCase());
+        const addrCho = getChoseong((v.address || '').toLowerCase());
+        return v.name.toLowerCase().includes(query) || nameCho.includes(queryCho) || v.phone.includes(query) || v.address.toLowerCase().includes(query) || addrCho.includes(queryCho) || v.storeHistory.some(s => s.toLowerCase().includes(query) || getChoseong(s.toLowerCase()).includes(queryCho));
       });
 
-      filtered.forEach((v, idx) => {
+      filtered.forEach((v) => {
+        const realIdx = vipList.indexOf(v);
         const div = document.createElement("div");
         div.className = "bg-slate-900 p-3 rounded-xl border border-slate-700 flex justify-between items-center text-xs";
         div.innerHTML = `
           <div>
-            <div class="font-black text-amber-300 text-sm">${escapeHtml(v.name)} <span class="text-slate-400 font-mono text-xs">(${escapeHtml(v.phone)})</span></div>
+            <div class="font-black text-amber-300 text-sm cursor-pointer hover:underline" onclick="applyVipToOrderForm(${realIdx})">${escapeHtml(v.name)} <span class="text-slate-400 font-mono text-xs">(${escapeHtml(v.phone)})</span></div>
             <div class="text-slate-300 text-[11px] mt-0.5">${escapeHtml(v.address)}</div>
-            <div class="text-[10px] text-sky-400 mt-1">출고 이력: ${escapeHtml(v.storeHistory.join(', '))}</div>
+            <div class="text-[10px] text-sky-400 mt-1">출고 이력: ${escapeHtml(v.storeHistory.join(', '))} ${v.defaultItem ? ' | 기본품목: ' + escapeHtml(v.defaultItem) : ''} ${v.defaultSpec ? ' | 기본규격: ' + escapeHtml(v.defaultSpec) : ''}</div>
           </div>
-          <div class="flex gap-1">
-            <button onclick="editVipModal(${idx})" class="bg-slate-800 text-slate-200 text-[11px] px-2 py-1 rounded border border-slate-600">수정</button>
-            <button onclick="deleteVip(${idx})" class="bg-rose-950 text-rose-300 text-[11px] px-2 py-1 rounded border border-rose-800/50">삭제</button>
+          <div class="flex gap-1 shrink-0 ml-2">
+            <button onclick="applyVipToOrderForm(${realIdx})" class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-[11px] px-2.5 py-1 rounded">접수</button>
+            <button onclick="editVipModal(${realIdx})" class="bg-slate-800 text-slate-200 text-[11px] px-2 py-1 rounded border border-slate-600">수정</button>
+            <button onclick="deleteVip(${realIdx})" class="bg-rose-950 text-rose-300 text-[11px] px-2 py-1 rounded border border-rose-800/50">삭제</button>
           </div>
         `;
         container.appendChild(div);
       });
+    }
+
+    function applyVipToOrderForm(idx) {
+      const v = vipList[idx];
+      if (!v) return;
+
+      if (recipientCards.length === 0) addRecipientCard();
+      const card = recipientCards[recipientCards.length - 1];
+
+      card.name = v.name || "";
+      card.phone = v.phone || "";
+      card.address = v.address || "";
+      if (v.defaultItem) card.itemOverride = v.defaultItem;
+      if (v.defaultSpec) card.items = [{ type: v.defaultSpec, count: 1 }];
+      if (v.memo) card.memo = v.memo;
+
+      switchTab("tabOrder");
+      renderRecipientCards();
+      validateCard(card);
+      updateSummaryOutput();
+      alert(`⭐ [${v.name}] 고객 정보가 접수 폼에 원터치 자동 세팅되었습니다!`);
     }
 
     function populateVipStoreSelect() {
@@ -2828,12 +3001,23 @@
     function formatVipPhoneInput(elem) {
       let num = elem.value.replace(/[^0-9]/g, '');
       if (num.length > 11) num = num.substring(0, 11);
+
       if (num.length === 11) {
         elem.value = num.replace(/(\d{3})(\d{4})(\d{4})/, '$1-$2-$3');
       } else if (num.length === 10) {
-        elem.value = num.replace(/(\d{3})(\d{3,4})(\d{4})/, '$1-$2-$3');
+        if (num.startsWith('02')) {
+          elem.value = num.replace(/(\d{2})(\d{4})(\d{4})/, '$1-$2-$3');
+        } else {
+          elem.value = num.replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2-$3');
+        }
       } else {
         elem.value = num;
+      }
+
+      if (num.length > 0 && num.length < 9) {
+        elem.classList.add("border-rose-500", "ring-1", "ring-rose-500");
+      } else {
+        elem.classList.remove("border-rose-500", "ring-1", "ring-rose-500");
       }
     }
 
