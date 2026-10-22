@@ -1,7 +1,7 @@
 {
-  "name": "김환식 전용 가락몰 스마트 송장 접수기",
-  "short_name": "가락몰송장",
-  "description": "가락몰 스마트 송장 접수 및 단골 관리 PWA 웹앱",
+  "name": "우정물류 택배 접수",
+  "short_name": "우정물류 택배 접수",
+  "description": "우정물류 가락몰 스마트 송장 접수 및 단골 관리 PWA 웹앱",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#111827",
