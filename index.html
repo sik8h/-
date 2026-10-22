@@ -1,0 +1,1599 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>김환식 전용 가락몰 스마트 송장 접수기</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0284c7">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+    input, textarea, select {
+      user-select: auto;
+    }
+    /* Custom scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #475569;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col font-sans">
+
+  <!-- Header -->
+  <header class="bg-sky-700 text-white p-3 shadow-lg sticky top-0 z-40 flex justify-between items-center">
+    <div class="flex items-center space-x-2">
+      <div class="bg-yellow-400 text-slate-900 font-extrabold text-xs px-2 py-1 rounded">가락몰</div>
+      <h1 class="text-base font-bold tracking-tight">김환식 전용 스마트 송장 접수기</h1>
+    </div>
+    <div class="flex items-center space-x-2">
+      <button onclick="openModal('geminiModal')" class="bg-sky-800 hover:bg-sky-900 text-xs px-2.5 py-1.5 rounded-lg border border-sky-500 flex items-center gap-1 font-semibold">
+        <span>🤖 AI 설정</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Top Hands-free Speech Recognition Banner -->
+  <div class="bg-gradient-to-r from-amber-500 to-orange-600 p-2.5 shadow-md">
+    <button id="voiceBtn" onclick="toggleVoiceRecognition()" class="w-full bg-slate-950/80 hover:bg-slate-950 text-amber-300 font-bold py-2.5 px-4 rounded-xl flex items-center justify-center space-x-2 shadow border border-amber-400/40 active:scale-[0.99] transition">
+      <span id="voiceIcon" class="text-xl">🎤</span>
+      <span id="voiceText" class="text-sm">음성으로 업체·타입·건수 말하기 (터치하여 시작)</span>
+    </button>
+  </div>
+
+  <!-- Navigation Tabs -->
+  <nav class="bg-slate-800 border-b border-slate-700 flex text-xs font-bold text-slate-300 sticky top-[53px] z-30">
+    <button onclick="switchTab('tabOrder')" id="tabBtnOrder" class="flex-1 py-3 text-center border-b-2 border-amber-400 text-amber-400 flex justify-center items-center gap-1">
+      <span>📝</span><span>전표 접수</span>
+    </button>
+    <button onclick="switchTab('tabVip')" id="tabBtnVip" class="flex-1 py-3 text-center border-b-2 border-transparent hover:text-slate-100 flex justify-center items-center gap-1">
+      <span>⭐</span><span>단골 DB</span>
+    </button>
+    <button onclick="switchTab('tabCompany')" id="tabBtnCompany" class="flex-1 py-3 text-center border-b-2 border-transparent hover:text-slate-100 flex justify-center items-center gap-1">
+      <span>🏪</span><span>업체 관리</span>
+    </button>
+    <button onclick="switchTab('tabHistory')" id="tabBtnHistory" class="flex-1 py-3 text-center border-b-2 border-transparent hover:text-slate-100 flex justify-center items-center gap-1">
+      <span>📦</span><span>내역/백업</span>
+    </button>
+  </nav>
+
+  <!-- Main Content Area -->
+  <main class="flex-1 p-3 max-w-3xl w-full mx-auto pb-24">
+
+    <!-- TAB 1: 전표 접수 -->
+    <section id="tabOrder" class="space-block">
+      <!-- 1. 업체 선택 영역 -->
+      <div class="bg-slate-800 p-3.5 rounded-xl border border-slate-700 mb-3 shadow">
+        <div class="flex justify-between items-center mb-2">
+          <label class="text-xs font-bold text-amber-400 flex items-center gap-1">
+            <span>🏪</span> [1] 발송 업체 선택 (엄격 분리)
+          </label>
+          <span id="companyCountBadge" class="text-[10px] bg-slate-700 px-2 py-0.5 rounded text-slate-300"></span>
+        </div>
+
+        <!-- 업체 검색 / 빠른 선택 -->
+        <div class="mb-2.5 flex gap-2">
+          <input type="text" id="companySearchInput" oninput="filterCompanyButtons()" placeholder="업체명/품목 검색 (예: 16번, 영화, 고구마)" class="flex-1 bg-slate-900 border border-slate-700 text-sm rounded-lg px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-sky-500">
+          <button onclick="resetCompanySearch()" class="bg-slate-700 text-xs px-3 py-2 rounded-lg text-slate-300 hover:bg-slate-600">초기화</button>
+        </div>
+
+        <!-- 업체 버튼 그리드 -->
+        <div id="companyButtonsContainer" class="grid grid-cols-3 sm:grid-cols-4 gap-1.5 max-h-48 overflow-y-auto p-1 bg-slate-900/60 rounded-lg border border-slate-700/60">
+          <!-- JS dynamic generation -->
+        </div>
+
+        <!-- 선택된 업체 기본 정보 디스플레이 -->
+        <div id="selectedCompanyInfo" class="mt-2.5 p-2.5 bg-slate-900/90 rounded-lg border border-amber-500/40 text-xs flex justify-between items-center">
+          <div>
+            <span class="text-slate-400">선택된 발송인:</span>
+            <span id="scName" class="font-bold text-amber-300 ml-1 text-sm">영화물산</span>
+            <span id="scCategory" class="text-slate-300 ml-1.5 bg-slate-800 px-1.5 py-0.5 rounded border border-slate-700">건어물</span>
+          </div>
+          <div class="text-right">
+            <span class="text-slate-400">연락처:</span>
+            <span id="scPhone" class="font-mono text-amber-200 ml-1">영화물산</span>
+            <span id="scBox" class="ml-1.5 text-sky-400 font-bold bg-sky-950/80 px-1.5 py-0.5 rounded border border-sky-800">기본: B</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. 전표 및 Gemini 사진 업로드 / 수취인 작성 영역 -->
+      <div class="bg-slate-800 p-3.5 rounded-xl border border-slate-700 mb-3 shadow">
+        <div class="flex justify-between items-center mb-2.5">
+          <label class="text-xs font-bold text-amber-400 flex items-center gap-1">
+            <span>📋</span> [2] 수취인 명단 입력 및 사진 첨부
+          </label>
+          <div class="flex gap-1.5">
+            <label class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs px-2.5 py-1.5 rounded-lg font-bold cursor-pointer flex items-center gap-1 shadow">
+              <span>📷</span> 전표 사진 촬영/선택
+              <input type="file" id="receiptPhotoInput" accept="image/*" capture="environment" onchange="handleReceiptPhotoSelect(event)" class="hidden">
+            </label>
+          </div>
+        </div>
+
+        <!-- Gemini 추출 진행 상태 안내 -->
+        <div id="ocrStatus" class="hidden p-2.5 mb-3 bg-indigo-950/80 border border-indigo-500 rounded-lg text-xs text-indigo-200 flex items-center gap-2">
+          <div class="animate-spin rounded-full h-4 w-4 border-2 border-indigo-400 border-t-transparent"></div>
+          <span id="ocrStatusMsg">Gemini AI가 전표 사진에서 수취인 정보를 분석하고 있습니다...</span>
+        </div>
+
+        <!-- 수취인 카드 컨테이너 -->
+        <div id="recipientsContainer" class="space-y-3">
+          <!-- JS generated cards -->
+        </div>
+
+        <!-- 수취인 추가 버튼 -->
+        <div class="mt-3 flex gap-2">
+          <button onclick="addRecipientCard()" class="flex-1 bg-slate-700 hover:bg-slate-600 text-amber-300 font-bold text-xs py-2.5 px-3 rounded-xl border border-amber-500/30 flex justify-center items-center gap-1 shadow">
+            <span>➕</span> 수취인 추가
+          </button>
+          <button onclick="clearAllRecipients()" class="bg-rose-950 hover:bg-rose-900 text-rose-300 text-xs py-2.5 px-3 rounded-xl border border-rose-800/50">
+            전체 초기화
+          </button>
+        </div>
+      </div>
+
+      <!-- 3. 실시간 요약 출력 및 워터마크 합성 / 카톡 공유 영역 -->
+      <div class="bg-slate-800 p-3.5 rounded-xl border border-slate-700 mb-3 shadow">
+        <div class="flex justify-between items-center mb-2">
+          <label class="text-xs font-bold text-amber-400 flex items-center gap-1">
+            <span>🖨️</span> [3] 최종 접수 요약 텍스트
+          </label>
+          <button onclick="copySummaryText()" class="bg-slate-700 hover:bg-slate-600 text-xs px-2.5 py-1 rounded text-slate-200 border border-slate-600">
+            📋 텍스트 복사
+          </button>
+        </div>
+
+        <textarea id="summaryOutput" readonly rows="7" class="w-full bg-slate-950 border border-slate-700 text-emerald-400 font-mono text-xs rounded-xl p-3 focus:outline-none leading-relaxed shadow-inner" placeholder="수취인 정보를 입력하면 이곳에 1:1 매칭 요약이 표시됩니다."></textarea>
+
+        <!-- 원본 및 워터마크 미리보기 Canvas & Image -->
+        <div id="photoPreviewArea" class="mt-3 hidden">
+          <div class="text-xs text-slate-400 font-bold mb-1 flex justify-between items-center">
+            <span>📷 워터마크 합성 미리보기</span>
+            <span class="text-[10px] text-amber-400">하단 검은 배경 + 굵은 노란색 글씨 합성 완료</span>
+          </div>
+          <div class="relative bg-slate-950 rounded-xl overflow-hidden border border-slate-700">
+            <canvas id="watermarkCanvas" class="w-full h-auto block"></canvas>
+          </div>
+        </div>
+
+        <!-- 공유 / 저장 실행 버튼 -->
+        <div class="mt-3 grid grid-cols-1 gap-2">
+          <button onclick="shareKakaoWithWatermark()" class="w-full bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-600 hover:to-amber-700 text-slate-950 font-black text-sm py-3.5 px-4 rounded-xl shadow-lg border border-yellow-300/40 flex justify-center items-center gap-2 active:scale-[0.99] transition">
+            <span class="text-base">🚀</span> 워터마크 사진 + 텍스트 카톡 공유 / 접수 저장
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 2: 단골 DB 관리 -->
+    <section id="tabVip" class="hidden space-block">
+      <div class="bg-slate-800 p-3.5 rounded-xl border border-slate-700 mb-3 shadow">
+        <div class="flex justify-between items-center mb-2.5">
+          <h2 class="text-xs font-bold text-amber-400 flex items-center gap-1">
+            <span>⭐</span> 단골 최신 DB (자동 덮어쓰기 UPSERT)
+          </h2>
+          <button onclick="openVipFormModal()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs px-2.5 py-1.5 rounded-lg font-bold">
+            ➕ 단골 직접 등록
+          </button>
+        </div>
+        <p class="text-[11px] text-slate-400 mb-2.5 leading-tight">
+          수취인의 이름, 전화번호, 주소 중 단 하나라도 일치하면 접수 시 최신 주소/정보로 자동 업데이트(UPSERT)됩니다. 전표에 주소가 빠져 있어도 자동 복원됩니다.
+        </p>
+
+        <input type="text" id="vipSearchInput" oninput="renderVipList()" placeholder="단골 이름 / 전화번호 / 주소 / 주요상점 검색" class="w-full bg-slate-900 border border-slate-700 text-xs rounded-lg px-3 py-2 text-white mb-3 focus:outline-none focus:border-amber-500">
+
+        <div id="vipListContainer" class="space-y-2 max-h-[600px] overflow-y-auto pr-1">
+          <!-- JS generated VIP list -->
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 3: 업체 관리 -->
+    <section id="tabCompany" class="hidden space-block">
+      <div class="bg-slate-800 p-3.5 rounded-xl border border-slate-700 mb-3 shadow">
+        <div class="flex justify-between items-center mb-2.5">
+          <h2 class="text-xs font-bold text-amber-400 flex items-center gap-1">
+            <span>🏪</span> 가락몰 발송 업체 DB (엄격 분리)
+          </h2>
+          <button onclick="openCompanyFormModal()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs px-2.5 py-1.5 rounded-lg font-bold">
+            ➕ 신규 업체 등록
+          </button>
+        </div>
+        <p class="text-[11px] text-slate-400 mb-2.5">
+          '16번'과 '16번옆', '52번'과 '52번옆', '우일'과 '유일수'처럼 명칭이 유사한 업체가 엄격 분리되어 저장 및 표시됩니다.
+        </p>
+
+        <div id="companyManagerContainer" class="space-y-2 max-h-[600px] overflow-y-auto pr-1">
+          <!-- JS generated company edit cards -->
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 4: 접수 내역 & 백업/다운로드 -->
+    <section id="tabHistory" class="hidden space-block">
+      <div class="bg-slate-800 p-3.5 rounded-xl border border-slate-700 mb-3 shadow">
+        <div class="flex justify-between items-center mb-2.5">
+          <h2 class="text-xs font-bold text-amber-400 flex items-center gap-1">
+            <span>📦</span> 당일 접수 내역
+          </h2>
+          <div class="flex gap-1.5">
+            <button onclick="downloadHanjinCSV()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-2.5 py-1.5 rounded-lg font-bold shadow">
+              📊 한진 CSV 다운로드
+            </button>
+            <button onclick="clearTodayHistory()" class="bg-rose-900 hover:bg-rose-800 text-rose-200 text-xs px-2 py-1.5 rounded-lg">
+              내역 비우기
+            </button>
+          </div>
+        </div>
+
+        <div id="historyListContainer" class="space-y-2 max-h-80 overflow-y-auto pr-1 mb-4">
+          <!-- JS generated history items -->
+        </div>
+
+        <!-- 백업 & 데이터 복원 -->
+        <div class="border-t border-slate-700 pt-3.5">
+          <h3 class="text-xs font-bold text-slate-300 mb-2">💾 전체 데이터 백업 및 복원 (JSON)</h3>
+          <div class="grid grid-cols-2 gap-2">
+            <button onclick="exportDataJSON()" class="bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs py-2.5 px-3 rounded-lg border border-slate-600 font-semibold flex justify-center items-center gap-1">
+              <span>📤</span> 백업 파일 다운로드
+            </button>
+            <label class="bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs py-2.5 px-3 rounded-lg border border-slate-600 font-semibold flex justify-center items-center gap-1 cursor-pointer text-center">
+              <span>📥</span> JSON 파일 복원
+              <input type="file" id="jsonImportInput" accept=".json" onchange="importDataJSON(event)" class="hidden">
+            </label>
+          </div>
+          <div class="mt-2 text-right">
+            <button onclick="resetToInitialDefaults()" class="text-[11px] text-rose-400 underline hover:text-rose-300">
+              ⚠️ 초기 기본 데이터로 완전 리셋
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Gemini API Key Modal -->
+  <div id="geminiModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-slate-800 border border-slate-700 rounded-2xl max-w-md w-full p-4 shadow-2xl">
+      <div class="flex justify-between items-center mb-3">
+        <h3 class="text-sm font-bold text-amber-400 flex items-center gap-1.5">
+          <span>🤖</span> Gemini AI Vision API 키 설정
+        </h3>
+        <button onclick="closeModal('geminiModal')" class="text-slate-400 hover:text-white text-lg">&times;</button>
+      </div>
+      <p class="text-xs text-slate-300 mb-3 leading-relaxed">
+        Google Gemini API 키를 입력하시면, 전표 사진을 촬영할 때 수취인 이름, 연락처, 주소, 규격, 수량을 자동으로 분할 추출해줍니다. (기본: <code class="text-amber-300 font-mono">gemini-2.5-flash</code>)
+      </p>
+      <input type="password" id="geminiApiKeyInput" placeholder="AIzaSy..." class="w-full bg-slate-900 border border-slate-700 text-sm font-mono rounded-lg p-2.5 text-white mb-3 focus:outline-none focus:border-amber-500">
+      <div class="flex justify-end gap-2">
+        <button onclick="closeModal('geminiModal')" class="bg-slate-700 text-xs px-3 py-2 rounded-lg text-slate-300">취소</button>
+        <button onclick="saveGeminiApiKey()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-bold px-4 py-2 rounded-lg">저장하기</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 단골 등록/수정 모달 -->
+  <div id="vipFormModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-slate-800 border border-slate-700 rounded-2xl max-w-md w-full p-4 shadow-2xl">
+      <div class="flex justify-between items-center mb-3">
+        <h3 id="vipModalTitle" class="text-sm font-bold text-amber-400">⭐ 단골 등록</h3>
+        <button onclick="closeModal('vipFormModal')" class="text-slate-400 hover:text-white text-lg">&times;</button>
+      </div>
+      <input type="hidden" id="vipEditIndex" value="-1">
+      <div class="space-y-2.5 text-xs">
+        <div>
+          <label class="block text-slate-400 mb-1">수취인 / 단골명 *</label>
+          <input type="text" id="vipNameInput" placeholder="예: 서울시청 구내식당(이두례)" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white">
+        </div>
+        <div>
+          <label class="block text-slate-400 mb-1">전화번호 *</label>
+          <input type="tel" id="vipPhoneInput" placeholder="예: 010-2442-1830" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white font-mono">
+        </div>
+        <div>
+          <label class="block text-slate-400 mb-1">도로명 주소 *</label>
+          <textarea id="vipAddressInput" rows="2" placeholder="예: 서울특별시 중구 세종대로 110 (서울시청 구내식당)" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white"></textarea>
+        </div>
+        <div>
+          <label class="block text-slate-400 mb-1">주요 거래 상점 (선택)</label>
+          <input type="text" id="vipStoreInput" placeholder="예: 영화" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white">
+        </div>
+      </div>
+      <div class="flex justify-end gap-2 mt-4">
+        <button onclick="closeModal('vipFormModal')" class="bg-slate-700 text-xs px-3 py-2 rounded-lg text-slate-300">취소</button>
+        <button onclick="saveVipForm()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-bold px-4 py-2 rounded-lg">저장하기</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 업체 등록/수정 모달 -->
+  <div id="companyFormModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-slate-800 border border-slate-700 rounded-2xl max-w-md w-full p-4 shadow-2xl">
+      <div class="flex justify-between items-center mb-3">
+        <h3 id="companyModalTitle" class="text-sm font-bold text-amber-400">🏪 업체 등록 (엄격 분리)</h3>
+        <button onclick="closeModal('companyFormModal')" class="text-slate-400 hover:text-white text-lg">&times;</button>
+      </div>
+      <input type="hidden" id="companyEditIndex" value="-1">
+      <div class="space-y-2.5 text-xs">
+        <div>
+          <label class="block text-slate-400 mb-1">버튼 표기명 / 약칭 * (예: 16번, 16번옆)</label>
+          <input type="text" id="companyShortInput" placeholder="예: 16번옆" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white font-bold">
+        </div>
+        <div>
+          <label class="block text-slate-400 mb-1">정식 상호명 * (예: 16번옆, 영화물산)</label>
+          <input type="text" id="companyNameInput" placeholder="예: 16번옆" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white">
+        </div>
+        <div>
+          <label class="block text-slate-400 mb-1">품목명 (예: 고구마, 건어물, 수산물)</label>
+          <input type="text" id="companyCategoryInput" placeholder="예: 고구마" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white">
+        </div>
+        <div>
+          <label class="block text-slate-400 mb-1">기본 연락처 / 위치 (없으면 상호명 적용)</label>
+          <input type="text" id="companyPhoneInput" placeholder="예: 010-3169-0207" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white font-mono">
+        </div>
+        <div>
+          <label class="block text-slate-400 mb-1">디폴트 택배 규격</label>
+          <select id="companyDefaultBoxInput" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white">
+            <option value="B">한진 B (기본)</option>
+            <option value="A">한진 A</option>
+            <option value="C">한진 C</option>
+            <option value="D">한진 D</option>
+            <option value="E">한진 E</option>
+            <option value="우체국">우체국</option>
+          </select>
+        </div>
+      </div>
+      <div class="flex justify-end gap-2 mt-4">
+        <button onclick="closeModal('companyFormModal')" class="bg-slate-700 text-xs px-3 py-2 rounded-lg text-slate-300">취소</button>
+        <button onclick="saveCompanyForm()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-bold px-4 py-2 rounded-lg">저장하기</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- JavaScript App Engine -->
+  <script>
+    // ==========================================
+    // 1. INITIAL DATA SPECIFICATIONS
+    // ==========================================
+
+    // Initial Company List (~46 entries strictly separated)
+    const INITIAL_COMPANIES = [
+      { shortName: "영화", name: "영화물산", category: "건어물", phone: "영화물산", defaultBox: "B" },
+      { shortName: "5번", name: "5번기둥", category: "고구마", phone: "5번기둥", defaultBox: "B" },
+      { shortName: "12번", name: "12번기둥", category: "고구마", phone: "010-9982-1813", defaultBox: "B" },
+      { shortName: "21번", name: "21번기둥", category: "고구마", phone: "010-2272-7622", defaultBox: "B" },
+      { shortName: "4번", name: "4번기둥", category: "고구마", phone: "010-7558-1941", defaultBox: "B" },
+      { shortName: "천왕", name: "천왕", category: "고구마", phone: "천왕", defaultBox: "B" },
+      { shortName: "억기", name: "억기농산", category: "고구마", phone: "010-5494-8645", defaultBox: "B" },
+      { shortName: "성진", name: "성진상회", category: "건어물", phone: "성진상회", defaultBox: "C" },
+      { shortName: "인화", name: "인화상회", category: "당근", phone: "010-5335-9500", defaultBox: "C" },
+      { shortName: "백운", name: "백운농산", category: "고구마", phone: "010-4693-3602", defaultBox: "B" },
+      { shortName: "백두산", name: "백두산상회", category: "과일", phone: "010-8363-6737", defaultBox: "우체국" },
+      { shortName: "금옥", name: "금옥상회", category: "건어물", phone: "금옥상회", defaultBox: "B" },
+      { shortName: "덕화", name: "덕화", category: "고구마", phone: "덕화", defaultBox: "B" },
+      { shortName: "신해", name: "신해드림", category: "건어물", phone: "신해드림", defaultBox: "D" },
+      { shortName: "이조", name: "이조농산", category: "고구마", phone: "이조농산", defaultBox: "B" },
+      { shortName: "매점옆", name: "매점옆", category: "고구마", phone: "010-7120-7074", defaultBox: "B" },
+      { shortName: "대일", name: "대일공사", category: "고춧가루", phone: "대일공사", defaultBox: "C" },
+      { shortName: "호남", name: "호남상회", category: "고춧가루", phone: "010-3730-7830", defaultBox: "C" },
+      { shortName: "성광", name: "성광건해", category: "건어물", phone: "010-4094-6016", defaultBox: "B" },
+      { shortName: "미나", name: "미나유통", category: "건어물", phone: "010-4250-2647", defaultBox: "B" },
+      { shortName: "일호", name: "일호축산", category: "정육", phone: "010-8942-2675", defaultBox: "우체국" },
+      { shortName: "창성", name: "창성", category: "마늘", phone: "010-3709-0000", defaultBox: "C" },
+      { shortName: "또순", name: "또순김치", category: "10키로", phone: "010-9949-8146", defaultBox: "A" },
+      { shortName: "우성", name: "우성상회", category: "건어물", phone: "우성상회", defaultBox: "B" },
+      { shortName: "상아", name: "상아건해", category: "건어물", phone: "상아건해", defaultBox: "B" },
+      { shortName: "창신", name: "창신수산", category: "건어물", phone: "010-5281-7383", defaultBox: "C" },
+      { shortName: "하나", name: "하나푸드", category: "사과", phone: "010-5477-7571", defaultBox: "우체국" },
+      { shortName: "송이", name: "송이쓰", category: "버섯", phone: "송이쓰", defaultBox: "B" },
+      { shortName: "만세", name: "만세유통", category: "쌀", phone: "만세유통", defaultBox: "D" },
+      { shortName: "제일식", name: "제일식품", category: "젓갈", phone: "010-2492-7646", defaultBox: "C" },
+      { shortName: "제일상", name: "제일상사", category: "건어물", phone: "제일상사", defaultBox: "D" },
+      { shortName: "다도해", name: "다도해", category: "건어물", phone: "다도해", defaultBox: "D" },
+      { shortName: "영민", name: "영민상회", category: "건어물", phone: "010-5009-4623", defaultBox: "C" },
+      { shortName: "봉주르", name: "봉주르수산", category: "해산물", phone: "010-9692-1599", defaultBox: "우체국" },
+      { shortName: "율리", name: "율리팜", category: "야채", phone: "010-9456-3429", defaultBox: "C" },
+      { shortName: "66번", name: "66번", category: "야채", phone: "66번", defaultBox: "우체국" },
+      { shortName: "67번", name: "67번", category: "김치", phone: "67번", defaultBox: "D" },
+      { shortName: "70번", name: "70번", category: "야채", phone: "010-2700-1094", defaultBox: "C" },
+      { shortName: "58번", name: "야채 58번", category: "야채", phone: "010-7737-7377", defaultBox: "B" },
+      // Distinctly separated pairs:
+      { shortName: "16번", name: "16번", category: "고구마", phone: "16번기둥", defaultBox: "B" },
+      { shortName: "16번옆", name: "16번옆", category: "고구마", phone: "010-3169-0207", defaultBox: "B" },
+      { shortName: "52번", name: "52번", category: "사과", phone: "52번", defaultBox: "우체국" },
+      { shortName: "52번옆", name: "52번옆", category: "과일", phone: "010-3531-5378", defaultBox: "우체국" },
+      { shortName: "우일", name: "우일수산", category: "건어물", phone: "우일수산", defaultBox: "C" },
+      { shortName: "유일수", name: "유일수산", category: "수산물", phone: "010-4735-8151", defaultBox: "C" },
+      { shortName: "뿌리", name: "뿌리쟁이", category: "도라지", phone: "뿌리쟁이", defaultBox: "우체국" }
+    ];
+
+    // Initial VIP Recipient List (11 real addresses)
+    const INITIAL_VIP_LIST = [
+      { name: "서울시청 구내식당(이두례)", phone: "010-2442-1830", address: "서울특별시 중구 세종대로 110 (서울시청 구내식당)", store: "영화" },
+      { name: "삼산물류(함예빈)", phone: "010-8077-4525", address: "울산 남구 중앙로 75번길 30-56 (신정동) 1", store: "영화" },
+      { name: "굿테이블(홍진용)", phone: "010-3028-7260", address: "경기도 고양시 덕양구 향동로 218 (향동동) 현대테라타워 dmc A-112호", store: "영화" },
+      { name: "시골홍두깨칼국수", phone: "010-5765-6606", address: "경기도 안산시 상록구 성호로 118번지", store: "영화" },
+      { name: "짱구네(레시피 랩 짱구)", phone: "010-9235-0789", address: "인천 중구 햇내로안길 18-3 1층", store: "대일" },
+      { name: "더 살림 문신애", phone: "010-7668-1800", address: "충남 천안시 서북구 쌍용4길 6", store: "성광" },
+      { name: "송파컴퓨터학원 이정노원장님", phone: "010-3343-0355", address: "경기도 광주시 고불로 453 우남퍼스트빌 102동 601호", store: "미나" },
+      { name: "농가맛집", phone: "010-4942-8375", address: "전남 고흥군 도덕면 고흥만로 1132-88", store: "일호" },
+      { name: "윤난영", phone: "010-3234-7859", address: "경기 의왕시 양지편로 13-27 C동 201호", store: "16번옆" },
+      { name: "조은라이브", phone: "010-4632-0945", address: "서울 송파구 잠실동 205-1번지", store: "미나" },
+      { name: "최선묵", phone: "010-6269-1370", address: "서울시 성동구 난계로 73, 102-1501", store: "태영" }
+    ];
+
+    // ==========================================
+    // 2. STATE MANAGEMENT & LOCALSTORAGE
+    // ==========================================
+    let companies = [];
+    let vipList = [];
+    let historyList = [];
+    let geminiApiKey = "";
+    let selectedCompany = null;
+    let recipientCards = [];
+    let currentPhotoFile = null;
+    let isSpeechRecognizing = false;
+    let recognition = null;
+
+    // Load State
+    function loadAppState() {
+      const savedComp = localStorage.getItem("garak_companies");
+      companies = savedComp ? JSON.parse(savedComp) : [...INITIAL_COMPANIES];
+
+      const savedVip = localStorage.getItem("garak_vipList");
+      vipList = savedVip ? JSON.parse(savedVip) : [...INITIAL_VIP_LIST];
+
+      const savedHist = localStorage.getItem("garak_history");
+      historyList = savedHist ? JSON.parse(savedHist) : [];
+
+      geminiApiKey = localStorage.getItem("garak_geminiKey") || "";
+      if (geminiApiKey) {
+        document.getElementById("geminiApiKeyInput").value = geminiApiKey;
+      }
+
+      // Default company selection = "영화"
+      selectedCompany = companies.find(c => c.shortName === "영화") || companies[0];
+    }
+
+    function saveState() {
+      localStorage.setItem("garak_companies", JSON.stringify(companies));
+      localStorage.setItem("garak_vipList", JSON.stringify(vipList));
+      localStorage.setItem("garak_history", JSON.stringify(historyList));
+      localStorage.setItem("garak_geminiKey", geminiApiKey);
+    }
+
+    // ==========================================
+    // 3. INIT & UI RENDERING
+    // ==========================================
+    window.addEventListener("DOMContentLoaded", () => {
+      loadAppState();
+      renderCompanyButtons();
+      updateSelectedCompanyDisplay();
+      if (recipientCards.length === 0) {
+        addRecipientCard();
+      } else {
+        renderRecipientCards();
+      }
+      renderVipList();
+      renderCompanyManager();
+      renderHistoryList();
+      initSpeechRecognition();
+
+      // Register Service Worker
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('sw.js').then(() => {
+          console.log('Service Worker Registered');
+        }).catch(err => console.log('SW Reg failed:', err));
+      }
+    });
+
+    function switchTab(tabId) {
+      ['tabOrder', 'tabVip', 'tabCompany', 'tabHistory'].forEach(id => {
+        const elem = document.getElementById(id);
+        const btn = document.getElementById('tabBtn' + id.replace('tab', ''));
+        if (id === tabId) {
+          elem.classList.remove('hidden');
+          btn.classList.add('border-amber-400', 'text-amber-400');
+          btn.classList.remove('border-transparent', 'text-slate-300');
+        } else {
+          elem.classList.add('hidden');
+          btn.classList.remove('border-amber-400', 'text-amber-400');
+          btn.classList.add('border-transparent', 'text-slate-300');
+        }
+      });
+    }
+
+    function openModal(id) {
+      document.getElementById(id).classList.remove('hidden');
+    }
+    function closeModal(id) {
+      document.getElementById(id).classList.add('hidden');
+    }
+
+    // ==========================================
+    // 4. COMPANY SELECTION & MANAGEMENT
+    // ==========================================
+    function renderCompanyButtons(filterText = "") {
+      const container = document.getElementById("companyButtonsContainer");
+      container.innerHTML = "";
+      document.getElementById("companyCountBadge").innerText = `총 ${companies.length}개`;
+
+      const search = filterText.trim().toLowerCase();
+      const filtered = companies.filter(c => {
+        if (!search) return true;
+        return c.shortName.toLowerCase().includes(search) ||
+               c.name.toLowerCase().includes(search) ||
+               c.category.toLowerCase().includes(search);
+      });
+
+      filtered.forEach(c => {
+        const isSelected = selectedCompany && selectedCompany.shortName === c.shortName;
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.onclick = () => selectCompany(c);
+        btn.className = `p-2 rounded-lg text-left transition font-semibold text-xs border flex flex-col justify-between ${
+          isSelected
+            ? "bg-amber-500 text-slate-950 border-amber-300 shadow-md ring-2 ring-amber-400"
+            : "bg-slate-800 text-slate-200 border-slate-700 hover:bg-slate-700"
+        }`;
+        btn.innerHTML = `
+          <div class="flex justify-between items-center w-full">
+            <span class="font-extrabold text-sm truncate">${escapeHtml(c.shortName)}</span>
+            <span class="text-[10px] px-1 py-0.2 rounded ${isSelected ? 'bg-amber-700 text-amber-100' : 'bg-slate-900 text-amber-400'}">${escapeHtml(c.category)}</span>
+          </div>
+          <div class="text-[10px] truncate ${isSelected ? 'text-slate-900 font-bold' : 'text-slate-400'} mt-0.5">
+            ${escapeHtml(c.phone)}
+          </div>
+        `;
+        container.appendChild(btn);
+      });
+    }
+
+    function filterCompanyButtons() {
+      const val = document.getElementById("companySearchInput").value;
+      renderCompanyButtons(val);
+    }
+
+    function resetCompanySearch() {
+      document.getElementById("companySearchInput").value = "";
+      renderCompanyButtons("");
+    }
+
+    function selectCompany(companyObj) {
+      selectedCompany = companyObj;
+      renderCompanyButtons(document.getElementById("companySearchInput").value);
+      updateSelectedCompanyDisplay();
+      updateSummaryOutput();
+    }
+
+    function updateSelectedCompanyDisplay() {
+      if (!selectedCompany) return;
+      document.getElementById("scName").innerText = selectedCompany.name;
+      document.getElementById("scCategory").innerText = selectedCompany.category;
+      document.getElementById("scPhone").innerText = selectedCompany.phone || selectedCompany.name;
+      document.getElementById("scBox").innerText = `기본: ${selectedCompany.defaultBox}`;
+    }
+
+    // ==========================================
+    // 5. RECIPIENTS & MULTI-ORDER CARDS
+    // ==========================================
+    function addRecipientCard(initialData = null) {
+      const id = Date.now() + Math.random().toString(36).substr(2, 4);
+      const defaultBox = selectedCompany ? selectedCompany.defaultBox : "B";
+
+      const newCard = {
+        id: id,
+        name: initialData?.name || "",
+        phone: initialData?.phone || "",
+        address: initialData?.address || "",
+        memo: initialData?.memo || "",
+        // Box types selected: Array of { type: 'B'|'A'|'C'|'D'|'E'|'우체국'|'착불 4000원'|'착불 5000원'|'착불 5300원'|'착불 6000원', count: number }
+        items: initialData?.items || [{ type: defaultBox, count: 1 }],
+        isAutoFilledAddress: false,
+        isMissingAddress: false
+      };
+
+      recipientCards.push(newCard);
+      renderRecipientCards();
+      updateSummaryOutput();
+    }
+
+    function removeRecipientCard(id) {
+      if (recipientCards.length <= 1) {
+        // Clear instead of removing last card
+        recipientCards[0].name = "";
+        recipientCards[0].phone = "";
+        recipientCards[0].address = "";
+        recipientCards[0].memo = "";
+        recipientCards[0].items = [{ type: selectedCompany ? selectedCompany.defaultBox : "B", count: 1 }];
+        recipientCards[0].isAutoFilledAddress = false;
+        recipientCards[0].isMissingAddress = false;
+      } else {
+        recipientCards = recipientCards.filter(c => c.id !== id);
+      }
+      renderRecipientCards();
+      updateSummaryOutput();
+    }
+
+    function clearAllRecipients() {
+      recipientCards = [];
+      currentPhotoFile = null;
+      document.getElementById("photoPreviewArea").classList.add("hidden");
+      addRecipientCard();
+    }
+
+    function updateCardField(id, field, value) {
+      const card = recipientCards.find(c => c.id === id);
+      if (!card) return;
+      card[field] = value;
+
+      if (field === 'name' || field === 'phone' || field === 'address') {
+        checkVipUpsertAndAutoFill(card);
+      }
+      updateSummaryOutput();
+    }
+
+    // Checking VIP DB for auto fill address / warning
+    function checkVipUpsertAndAutoFill(card) {
+      card.isAutoFilledAddress = false;
+      card.isMissingAddress = false;
+
+      const normName = card.name.trim();
+      const normPhone = card.phone.replace(/[^0-9]/g, '');
+      const normAddr = card.address.trim();
+
+      // Look up matching VIP
+      let matchedVip = null;
+      if (normName || normPhone || normAddr) {
+        matchedVip = vipList.find(v => {
+          const vPhone = v.phone.replace(/[^0-9]/g, '');
+          const matchN = normName && (v.name.includes(normName) || normName.includes(v.name));
+          const matchP = normPhone && vPhone && vPhone === normPhone;
+          const matchA = normAddr && v.address && v.address.includes(normAddr);
+          return matchN || matchP || matchA;
+        });
+      }
+
+      if (matchedVip) {
+        if (!normAddr && matchedVip.address) {
+          card.address = matchedVip.address;
+          card.isAutoFilledAddress = true;
+          // Refresh address input element directly
+          const addrElem = document.getElementById(`addr_${card.id}`);
+          if (addrElem) addrElem.value = matchedVip.address;
+        }
+      } else {
+        if (!card.address.trim()) {
+          card.isMissingAddress = true;
+        }
+      }
+      renderCardBadgeOnly(card);
+    }
+
+    function renderCardBadgeOnly(card) {
+      const badgeElem = document.getElementById(`badge_${card.id}`);
+      if (!badgeElem) return;
+
+      if (card.isAutoFilledAddress) {
+        badgeElem.innerHTML = `<span class="bg-amber-500/20 text-amber-300 border border-amber-500/50 px-2 py-0.5 rounded text-[11px] font-bold">⚡생략주소 자동완성</span>`;
+      } else if (card.isMissingAddress) {
+        badgeElem.innerHTML = `<span class="bg-rose-500/20 text-rose-300 border border-rose-500/50 px-2 py-0.5 rounded text-[11px] font-bold animate-pulse">⚠️[주소누락-단골확인필수!]</span>`;
+      } else {
+        badgeElem.innerHTML = ``;
+      }
+    }
+
+    const BOX_TYPE_OPTIONS = [
+      { id: "B", label: "한진 B" },
+      { id: "A", label: "한진 A" },
+      { id: "C", label: "한진 C" },
+      { id: "D", label: "한진 D" },
+      { id: "E", label: "한진 E" },
+      { id: "우체국", label: "우체국" },
+      { id: "착불 4000원", label: "착불 4천" },
+      { id: "착불 5000원", label: "착불 5천" },
+      { id: "착불 5300원", label: "착불 5.3천" },
+      { id: "착불 6000원", label: "착불 6천" }
+    ];
+
+    function toggleBoxTypeItem(cardId, typeId) {
+      const card = recipientCards.find(c => c.id === cardId);
+      if (!card) return;
+
+      const idx = card.items.findIndex(it => it.type === typeId);
+      if (idx >= 0) {
+        // If already selected and count > 1, decrement or remove
+        if (card.items.length > 1) {
+          card.items.splice(idx, 1);
+        }
+      } else {
+        card.items.push({ type: typeId, count: 1 });
+      }
+      renderRecipientCards();
+      updateSummaryOutput();
+    }
+
+    function changeItemCount(cardId, typeId, delta) {
+      const card = recipientCards.find(c => c.id === cardId);
+      if (!card) return;
+
+      const item = card.items.find(it => it.type === typeId);
+      if (item) {
+        item.count += delta;
+        if (item.count <= 0) {
+          if (card.items.length > 1) {
+            card.items = card.items.filter(it => it.type !== typeId);
+          } else {
+            item.count = 1;
+          }
+        }
+      }
+      renderRecipientCards();
+      updateSummaryOutput();
+    }
+
+    function renderRecipientCards() {
+      const container = document.getElementById("recipientsContainer");
+      container.innerHTML = "";
+
+      recipientCards.forEach((card, index) => {
+        const cardElem = document.createElement("div");
+        cardElem.className = "bg-slate-900 p-3 rounded-xl border border-slate-700 shadow-md relative";
+
+        let badgeHtml = "";
+        if (card.isAutoFilledAddress) {
+          badgeHtml = `<span class="bg-amber-500/20 text-amber-300 border border-amber-500/50 px-2 py-0.5 rounded text-[11px] font-bold">⚡생략주소 자동완성</span>`;
+        } else if (card.isMissingAddress) {
+          badgeHtml = `<span class="bg-rose-500/20 text-rose-300 border border-rose-500/50 px-2 py-0.5 rounded text-[11px] font-bold animate-pulse">⚠️[주소누락-단골확인필수!]</span>`;
+        }
+
+        // Box type option buttons
+        let boxTypeBtnsHtml = `<div class="grid grid-cols-5 gap-1 mb-2">`;
+        BOX_TYPE_OPTIONS.forEach(opt => {
+          const selectedItem = card.items.find(it => it.type === opt.id);
+          const isSel = !!selectedItem;
+          const isCod = opt.id.startsWith("착불");
+
+          boxTypeBtnsHtml += `
+            <button type="button" onclick="toggleBoxTypeItem('${card.id}', '${opt.id}')" class="py-1.5 px-1 rounded text-[11px] font-bold border transition ${
+              isSel
+                ? (isCod ? 'bg-orange-600 text-white border-orange-400 ring-1 ring-orange-300' : 'bg-sky-600 text-white border-sky-400 ring-1 ring-sky-300')
+                : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700'
+            }">
+              ${opt.label}
+            </button>
+          `;
+        });
+        boxTypeBtnsHtml += `</div>`;
+
+        // Selected items count controls
+        let selectedItemsHtml = `<div class="bg-slate-950 p-2 rounded-lg border border-slate-800 mb-2 space-y-1.5">`;
+        card.items.forEach(it => {
+          const isCod = it.type.startsWith("착불");
+          selectedItemsHtml += `
+            <div class="flex justify-between items-center text-xs">
+              <span class="font-bold ${isCod ? 'text-orange-400' : 'text-sky-300'}">${it.type}</span>
+              <div class="flex items-center gap-2">
+                <button type="button" onclick="changeItemCount('${card.id}', '${it.type}', -1)" class="w-6 h-6 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded flex items-center justify-center border border-slate-600">-</button>
+                <span class="font-mono font-bold text-amber-300 w-6 text-center text-sm">${it.count}건</span>
+                <button type="button" onclick="changeItemCount('${card.id}', '${it.type}', 1)" class="w-6 h-6 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded flex items-center justify-center border border-slate-600">+</button>
+              </div>
+            </div>
+          `;
+        });
+        selectedItemsHtml += `</div>`;
+
+        cardElem.innerHTML = `
+          <div class="flex justify-between items-center mb-2">
+            <div class="flex items-center gap-2">
+              <span class="bg-amber-400 text-slate-950 text-xs font-black px-2 py-0.5 rounded-full">${index + 1}</span>
+              <span class="text-xs font-bold text-slate-200">수취인 #${index + 1}</span>
+              <div id="badge_${card.id}">${badgeHtml}</div>
+            </div>
+            <button type="button" onclick="removeRecipientCard('${card.id}')" class="text-slate-400 hover:text-rose-400 text-xs px-1.5 py-0.5 rounded">
+              ✕ 삭제
+            </button>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2 mb-2">
+            <div>
+              <label class="block text-[10px] text-slate-400 mb-0.5">수취인 성명/상호 *</label>
+              <input type="text" value="${escapeHtml(card.name)}" oninput="updateCardField('${card.id}', 'name', this.value)" placeholder="예: 삼산물류(함예빈)" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs text-white focus:outline-none focus:border-sky-500">
+            </div>
+            <div>
+              <label class="block text-[10px] text-slate-400 mb-0.5">전화번호 *</label>
+              <input type="tel" value="${escapeHtml(card.phone)}" oninput="updateCardField('${card.id}', 'phone', this.value)" placeholder="예: 010-8077-4525" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs text-white font-mono focus:outline-none focus:border-sky-500">
+            </div>
+          </div>
+
+          <div class="mb-2">
+            <label class="block text-[10px] text-slate-400 mb-0.5">배송지 도로명 주소 (미입력시 단골 자동조회)</label>
+            <input type="text" id="addr_${card.id}" value="${escapeHtml(card.address)}" oninput="updateCardField('${card.id}', 'address', this.value)" placeholder="예: 울산 남구 중앙로 75번길 30-56" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs text-white focus:outline-none focus:border-sky-500">
+          </div>
+
+          <div class="mb-2">
+            <label class="block text-[10px] text-slate-400 mb-1">택배 규격 및 수량 선택 (복수 지정 가능)</label>
+            ${boxTypeBtnsHtml}
+            ${selectedItemsHtml}
+          </div>
+
+          <div>
+            <label class="block text-[10px] text-slate-400 mb-0.5">금액 / 특이사항 메모 (선택 입력 예: 3천, 5천x2)</label>
+            <input type="text" value="${escapeHtml(card.memo)}" oninput="updateCardField('${card.id}', 'memo', this.value)" placeholder="예: 3천 또는 5천x2, 4천x2" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-1.5 text-xs text-amber-200 focus:outline-none focus:border-amber-500">
+          </div>
+        `;
+
+        container.appendChild(cardElem);
+      });
+    }
+
+    // ==========================================
+    // 6. OUTPUT FORMATTING & 1:1 MATCHING
+    // ==========================================
+    function updateSummaryOutput() {
+      if (!selectedCompany) return;
+
+      let totalDestinations = 0;
+      let totalBoxes = 0;
+      let lines = [];
+
+      recipientCards.forEach((card, idx) => {
+        const nameStr = card.name.trim() || `(수취인${idx+1})`;
+
+        // Sum total boxes for this card
+        let cardTotalBoxes = 0;
+        let cardTypeParts = [];
+
+        card.items.forEach(it => {
+          cardTotalBoxes += it.count;
+          const isCod = it.type.startsWith("착불");
+
+          // CRITICAL BUSINESS RULE 4:
+          // When COD ('착불'), NEVER include box alphabet letter (A~E). Output strictly as '한진 착불 5000원 2건'
+          if (isCod) {
+            cardTypeParts.push(`한진 ${it.type} ${it.count}건`);
+          } else if (it.type === "우체국") {
+            cardTypeParts.push(`우체국 선불 ${it.count}건`);
+          } else {
+            cardTypeParts.push(`한진 선불 ${it.type} ${it.count}건`);
+          }
+        });
+
+        if (cardTotalBoxes > 0) {
+          totalDestinations++;
+          totalBoxes += cardTotalBoxes;
+        }
+
+        let typeStr = cardTypeParts.join(", ");
+        if (card.memo.trim()) {
+          typeStr += ` (${card.memo.trim()})`;
+        }
+
+        let line = `${idx + 1}) ${nameStr} : ${typeStr}`;
+        if (card.isMissingAddress && !card.address.trim()) {
+          line += ` ⚠️[주소누락-단골확인필수!]`;
+        }
+        lines.push(line);
+      });
+
+      const header = `[${selectedCompany.category} ${selectedCompany.name} - 총 ${totalDestinations}곳 / ${totalBoxes}건]`;
+      const footer = `${selectedCompany.category} ${selectedCompany.name} 총 ${totalBoxes}건`;
+
+      const fullOutput = [header, ...lines, footer].join("\n");
+      document.getElementById("summaryOutput").value = fullOutput;
+
+      // Re-render canvas preview if photo is attached
+      if (currentPhotoFile) {
+        generateWatermarkCanvas(fullOutput);
+      }
+    }
+
+    function copySummaryText() {
+      const text = document.getElementById("summaryOutput").value;
+      navigator.clipboard.writeText(text).then(() => {
+        alert("접수 요약 텍스트가 클립보드에 복사되었습니다!");
+      }).catch(err => {
+        alert("복사 실패: " + err);
+      });
+    }
+
+    // ==========================================
+    // 7. VOICE RECOGNITION (Web Speech API)
+    // ==========================================
+    function initSpeechRecognition() {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRecognition) {
+        document.getElementById("voiceText").innerText = "이 브라우저는 음성 인식을 지원하지 않습니다.";
+        return;
+      }
+
+      recognition = new SpeechRecognition();
+      recognition.lang = 'ko-KR';
+      recognition.continuous = false;
+      recognition.interimResults = false;
+
+      recognition.onstart = () => {
+        isSpeechRecognizing = true;
+        document.getElementById("voiceIcon").innerText = "🔴";
+        document.getElementById("voiceText").innerText = "음성 듣는 중... 말씀하세요 (예: 16번옆 비 두장 / 영화 디 세장)";
+        document.getElementById("voiceBtn").classList.add("animate-pulse", "ring-2", "ring-rose-400");
+      };
+
+      recognition.onend = () => {
+        isSpeechRecognizing = false;
+        document.getElementById("voiceIcon").innerText = "🎤";
+        document.getElementById("voiceText").innerText = "음성으로 업체·타입·건수 말하기 (터치하여 시작)";
+        document.getElementById("voiceBtn").classList.remove("animate-pulse", "ring-2", "ring-rose-400");
+      };
+
+      recognition.onerror = (event) => {
+        console.error("Speech Recognition Error:", event.error);
+        isSpeechRecognizing = false;
+        document.getElementById("voiceIcon").innerText = "🎤";
+        document.getElementById("voiceText").innerText = "음성 인식 오류. 다시 터치하세요.";
+      };
+
+      recognition.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        console.log("Voice Transcript:", transcript);
+        parseVoiceTranscript(transcript);
+      };
+    }
+
+    function toggleVoiceRecognition() {
+      if (!recognition) {
+        alert("현재 브라우저에서 음성 인식을 지원하지 않습니다.");
+        return;
+      }
+      if (isSpeechRecognizing) {
+        recognition.stop();
+      } else {
+        recognition.start();
+      }
+    }
+
+    function parseVoiceTranscript(text) {
+      let t = text.trim();
+      let matchedComp = null;
+
+      // Strict Company Name Matching
+      // Test exact shortNames / names prioritizing '16번옆', '52번옆', '유일수' etc.
+      const sortedCompList = [...companies].sort((a, b) => b.shortName.length - a.shortName.length);
+
+      for (let c of sortedCompList) {
+        if (t.includes(c.shortName) || t.includes(c.name)) {
+          matchedComp = c;
+          break;
+        }
+      }
+
+      // Voice aliases
+      if (!matchedComp) {
+        if (t.includes("십육번옆") || t.includes("16번 옆")) matchedComp = companies.find(c => c.shortName === "16번옆");
+        else if (t.includes("십육번") || t.includes("16번")) matchedComp = companies.find(c => c.shortName === "16번");
+        else if (t.includes("오십이번옆") || t.includes("52번 옆")) matchedComp = companies.find(c => c.shortName === "52번옆");
+        else if (t.includes("오십이번") || t.includes("52번")) matchedComp = companies.find(c => c.shortName === "52번");
+        else if (t.includes("우일")) matchedComp = companies.find(c => c.shortName === "우일");
+        else if (t.includes("유일")) matchedComp = companies.find(c => c.shortName === "유일수");
+      }
+
+      if (matchedComp) {
+        selectCompany(matchedComp);
+      }
+
+      // Box type parsing
+      let matchedBox = null;
+      if (t.includes("착불 사천") || t.includes("착불 4천") || t.includes("착불4000")) matchedBox = "착불 4000원";
+      else if (t.includes("착불 오천삼백") || t.includes("착불 5300")) matchedBox = "착불 5300원";
+      else if (t.includes("착불 오천") || t.includes("착불 5천") || t.includes("착불5000")) matchedBox = "착불 5000원";
+      else if (t.includes("착불 육천") || t.includes("착불 6천") || t.includes("착불6000")) matchedBox = "착불 6000원";
+      else if (t.includes("우체국")) matchedBox = "우체국";
+      else if (t.includes("에이") || t.includes("A")) matchedBox = "A";
+      else if (t.includes("비") || t.includes("삐") || t.includes("B")) matchedBox = "B";
+      else if (t.includes("씨") || t.includes("시") || t.includes("C")) matchedBox = "C";
+      else if (t.includes("디") || t.includes("D")) matchedBox = "D";
+      else if (t.includes("이") || t.includes("E")) matchedBox = "E";
+
+      // Quantity parsing
+      let matchedCount = 1;
+      if (t.includes("두장") || t.includes("두건") || t.includes("2장") || t.includes("2건")) matchedCount = 2;
+      else if (t.includes("세장") || t.includes("세건") || t.includes("3장") || t.includes("3건")) matchedCount = 3;
+      else if (t.includes("네장") || t.includes("네건") || t.includes("4장") || t.includes("4건")) matchedCount = 4;
+      else if (t.includes("다섯장") || t.includes("다섯건") || t.includes("5장") || t.includes("5건")) matchedCount = 5;
+
+      // Apply to first or active recipient card if matched
+      if (matchedBox && recipientCards.length > 0) {
+        const activeCard = recipientCards[recipientCards.length - 1];
+        activeCard.items = [{ type: matchedBox, count: matchedCount }];
+        renderRecipientCards();
+        updateSummaryOutput();
+      }
+
+      const msg = `음성 인식 결과: "${t}"` + (matchedComp ? ` -> [${matchedComp.name}] 선택` : '');
+      document.getElementById("voiceText").innerText = msg;
+    }
+
+    // ==========================================
+    // 8. CANVAS WATERMARK & KAKAOTALK SHARE
+    // ==========================================
+    function handleReceiptPhotoSelect(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      currentPhotoFile = file;
+      document.getElementById("photoPreviewArea").classList.remove("hidden");
+
+      const text = document.getElementById("summaryOutput").value;
+      generateWatermarkCanvas(text);
+
+      // Trigger Gemini AI Vision OCR if key exists
+      if (geminiApiKey) {
+        processGeminiOCR(file);
+      }
+    }
+
+    function generateWatermarkCanvas(summaryText) {
+      if (!currentPhotoFile) return;
+
+      const img = new Image();
+      img.src = URL.createObjectURL(currentPhotoFile);
+      img.onload = () => {
+        const canvas = document.getElementById("watermarkCanvas");
+        const ctx = canvas.getContext("2d");
+
+        const originalWidth = img.width;
+        const originalHeight = img.height;
+
+        // Prepare text lines
+        const lines = summaryText.split("\n");
+        const fontSize = Math.max(20, Math.floor(originalWidth * 0.035));
+        const lineHeight = Math.floor(fontSize * 1.4);
+
+        const bannerPadding = Math.floor(fontSize * 1.2);
+        const bannerHeight = (lines.length * lineHeight) + (bannerPadding * 2);
+
+        canvas.width = originalWidth;
+        canvas.height = originalHeight + bannerHeight;
+
+        // 1. Draw original photo
+        ctx.drawImage(img, 0, 0, originalWidth, originalHeight);
+
+        // 2. Draw black banner at bottom
+        ctx.fillStyle = "#090d16";
+        ctx.fillRect(0, originalHeight, originalWidth, bannerHeight);
+
+        // 3. Draw bold yellow summary text (#facc15)
+        ctx.fillStyle = "#facc15";
+        ctx.font = `bold ${fontSize}px sans-serif`;
+        ctx.textBaseline = "top";
+
+        lines.forEach((line, index) => {
+          const y = originalHeight + bannerPadding + (index * lineHeight);
+          ctx.fillText(line, bannerPadding, y);
+        });
+      };
+    }
+
+    async function shareKakaoWithWatermark() {
+      const text = document.getElementById("summaryOutput").value;
+
+      // 1. Copy text to clipboard
+      await navigator.clipboard.writeText(text).catch(() => {});
+
+      // 2. Save entry to history & UPSERT recipients
+      saveOrderToHistory();
+
+      // 3. Web Share API with Canvas File
+      const canvas = document.getElementById("watermarkCanvas");
+      if (currentPhotoFile && canvas) {
+        canvas.toBlob(async (blob) => {
+          const watermarkedFile = new File([blob], "garak_receipt_watermarked.png", { type: "image/png" });
+
+          if (navigator.share && navigator.canShare && navigator.canShare({ files: [watermarkedFile] })) {
+            try {
+              await navigator.share({
+                title: "김환식 전용 가락몰 송장 접수",
+                text: text,
+                files: [watermarkedFile]
+              });
+            } catch (err) {
+              console.log("Share canceled or failed:", err);
+            }
+          } else {
+            alert("텍스트가 클립보드에 복사되었으며 접수 내역에 저장되었습니다! 카톡방에 붙여넣기 하세요.");
+          }
+        }, "image/png");
+      } else {
+        if (navigator.share) {
+          try {
+            await navigator.share({
+              title: "김환식 전용 가락몰 송장 접수",
+              text: text
+            });
+          } catch (err) {}
+        } else {
+          alert("접수 요약 텍스트가 클립보드에 복사되었으며 당일 내역에 저장되었습니다!");
+        }
+      }
+    }
+
+    // ==========================================
+    // 9. GEMINI VISION OCR (Primary & Fallback)
+    // ==========================================
+    function saveGeminiApiKey() {
+      geminiApiKey = document.getElementById("geminiApiKeyInput").value.trim();
+      saveState();
+      closeModal("geminiModal");
+      alert("Gemini API 키가 저장되었습니다.");
+    }
+
+    async function processGeminiOCR(file) {
+      const statusBox = document.getElementById("ocrStatus");
+      const statusMsg = document.getElementById("ocrStatusMsg");
+      statusBox.classList.remove("hidden");
+      statusMsg.innerText = "Gemini AI가 전표 사진에서 수취인 정보를 분석하고 있습니다...";
+
+      try {
+        const base64Image = await fileToBase64(file);
+        const prompt = `이 사진은 농수산물 전표 사진입니다. 전표 사진에서 수취인의 이름(상호), 전화번호, 도로명 주소, 수량, 규격, 금액 메모를 추출하여 다음 JSON 배열 형식으로만 응답해 주세요:
+[
+  {
+    "name": "수취인이름",
+    "phone": "전화번호",
+    "address": "도로명주소",
+    "boxType": "B",
+    "count": 1,
+    "memo": "3천"
+  }
+]
+boxType은 "A","B","C","D","E","우체국","착불 4000원","착불 5000원","착불 5300원" 중 선택. 주소가 없으면 빈값으로 작성하세요. 다른설명 없이 JSON만 반환하세요.`;
+
+        // 1. Primary Model: gemini-2.5-flash
+        let extractedJson = await callGeminiAPI("gemini-2.5-flash", base64Image, prompt);
+
+        if (!extractedJson) {
+          // 2. Fallback Model: gemini-2.0-flash
+          statusMsg.innerText = "gemini-2.0-flash 모델로 폴백 처리 중...";
+          extractedJson = await callGeminiAPI("gemini-2.0-flash", base64Image, prompt);
+        }
+
+        if (extractedJson && Array.isArray(extractedJson) && extractedJson.length > 0) {
+          recipientCards = [];
+          extractedJson.forEach(item => {
+            addRecipientCard({
+              name: item.name || "",
+              phone: item.phone || "",
+              address: item.address || "",
+              memo: item.memo || "",
+              items: [{ type: item.boxType || selectedCompany.defaultBox, count: item.count || 1 }]
+            });
+          });
+          statusMsg.innerText = "Gemini AI 수취인 추출 완료!";
+          setTimeout(() => statusBox.classList.add("hidden"), 3000);
+        } else {
+          throw new Error("유효한 수취인 정보를 추출하지 못했습니다.");
+        }
+      } catch (err) {
+        console.error("Gemini OCR Error:", err);
+        statusMsg.innerText = "Gemini AI 추출 실패: 수동으로 수취인을 확인하세요.";
+        setTimeout(() => statusBox.classList.add("hidden"), 4000);
+      }
+    }
+
+    async function callGeminiAPI(modelName, base64Image, prompt) {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${geminiApiKey}`;
+      const requestBody = {
+        contents: [
+          {
+            parts: [
+              { text: prompt },
+              {
+                inline_data: {
+                  mime_type: "image/jpeg",
+                  data: base64Image
+                }
+              }
+            ]
+          }
+        ]
+      };
+
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(requestBody)
+      });
+
+      if (!res.ok) return null;
+      const data = await res.json();
+      const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (!rawText) return null;
+
+      const cleanJsonStr = rawText.replace(/```json/g, "").replace(/```/g, "").trim();
+      return JSON.parse(cleanJsonStr);
+    }
+
+    function fileToBase64(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result.split(',')[1]);
+        reader.onerror = error => reject(error);
+        reader.readAsDataURL(file);
+      });
+    }
+
+    // ==========================================
+    // 10. UPSERT VIP LOGIC & HISTORY
+    // ==========================================
+    function saveOrderToHistory() {
+      if (!selectedCompany) return;
+
+      recipientCards.forEach(card => {
+        const normName = card.name.trim();
+        const normPhone = card.phone.trim();
+        const normAddr = card.address.trim();
+
+        if (normName || normPhone) {
+          // UPSERT into VIP List
+          const matchedIdx = vipList.findIndex(v => {
+            const vPhone = v.phone.replace(/[^0-9]/g, '');
+            const cPhone = normPhone.replace(/[^0-9]/g, '');
+            return (normName && v.name === normName) || (cPhone && vPhone === cPhone);
+          });
+
+          if (matchedIdx >= 0) {
+            // Update existing VIP with latest info
+            if (normName) vipList[matchedIdx].name = normName;
+            if (normPhone) vipList[matchedIdx].phone = normPhone;
+            if (normAddr) vipList[matchedIdx].address = normAddr;
+            vipList[matchedIdx].store = selectedCompany.shortName;
+          } else {
+            // Add new VIP
+            vipList.push({
+              name: normName || "신규단골",
+              phone: normPhone,
+              address: normAddr,
+              store: selectedCompany.shortName
+            });
+          }
+        }
+
+        // Add item to today history
+        historyList.unshift({
+          timestamp: new Date().toLocaleString("ko-KR"),
+          companyName: selectedCompany.name,
+          category: selectedCompany.category,
+          recipientName: card.name,
+          phone: card.phone,
+          address: card.address,
+          items: [...card.items],
+          memo: card.memo
+        });
+      });
+
+      saveState();
+      renderVipList();
+      renderHistoryList();
+    }
+
+    // ==========================================
+    // 11. VIP & COMPANY MANAGEMENT RENDERING
+    // ==========================================
+    function renderVipList() {
+      const container = document.getElementById("vipListContainer");
+      container.innerHTML = "";
+
+      const query = document.getElementById("vipSearchInput").value.trim().toLowerCase();
+      const filtered = vipList.filter(v => {
+        if (!query) return true;
+        return v.name.toLowerCase().includes(query) ||
+               v.phone.includes(query) ||
+               v.address.toLowerCase().includes(query) ||
+               (v.store && v.store.toLowerCase().includes(query));
+      });
+
+      filtered.forEach((v, idx) => {
+        const itemElem = document.createElement("div");
+        itemElem.className = "bg-slate-900 p-2.5 rounded-xl border border-slate-700 flex justify-between items-center text-xs";
+        itemElem.innerHTML = `
+          <div>
+            <div class="flex items-center gap-1.5 mb-0.5">
+              <span class="font-bold text-amber-300 text-sm">${escapeHtml(v.name)}</span>
+              <span class="font-mono text-slate-400">${escapeHtml(v.phone)}</span>
+              ${v.store ? `<span class="bg-slate-800 text-amber-400 text-[10px] px-1.5 py-0.5 rounded border border-slate-700">주요: ${escapeHtml(v.store)}</span>` : ''}
+            </div>
+            <div class="text-slate-300 leading-tight">${escapeHtml(v.address || "주소 없음")}</div>
+          </div>
+          <div class="flex gap-1">
+            <button onclick="editVipModal(${idx})" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-[11px] px-2 py-1 rounded border border-slate-600">수정</button>
+            <button onclick="deleteVip(${idx})" class="bg-rose-950 hover:bg-rose-900 text-rose-300 text-[11px] px-2 py-1 rounded border border-rose-800/50">삭제</button>
+          </div>
+        `;
+        container.appendChild(itemElem);
+      });
+    }
+
+    function openVipFormModal() {
+      document.getElementById("vipEditIndex").value = "-1";
+      document.getElementById("vipModalTitle").innerText = "⭐ 단골 직접 등록";
+      document.getElementById("vipNameInput").value = "";
+      document.getElementById("vipPhoneInput").value = "";
+      document.getElementById("vipAddressInput").value = "";
+      document.getElementById("vipStoreInput").value = "";
+      openModal("vipFormModal");
+    }
+
+    function editVipModal(idx) {
+      const v = vipList[idx];
+      document.getElementById("vipEditIndex").value = idx;
+      document.getElementById("vipModalTitle").innerText = "⭐ 단골 정보 수정";
+      document.getElementById("vipNameInput").value = v.name;
+      document.getElementById("vipPhoneInput").value = v.phone;
+      document.getElementById("vipAddressInput").value = v.address;
+      document.getElementById("vipStoreInput").value = v.store || "";
+      openModal("vipFormModal");
+    }
+
+    function saveVipForm() {
+      const idx = parseInt(document.getElementById("vipEditIndex").value);
+      const name = document.getElementById("vipNameInput").value.trim();
+      const phone = document.getElementById("vipPhoneInput").value.trim();
+      const address = document.getElementById("vipAddressInput").value.trim();
+      const store = document.getElementById("vipStoreInput").value.trim();
+
+      if (!name || !phone) {
+        alert("수취인 이름과 전화번호는 필수 입력입니다.");
+        return;
+      }
+
+      if (idx >= 0) {
+        vipList[idx] = { name, phone, address, store };
+      } else {
+        vipList.push({ name, phone, address, store });
+      }
+
+      saveState();
+      renderVipList();
+      closeModal("vipFormModal");
+    }
+
+    function deleteVip(idx) {
+      if (confirm("이 단골 정보를 삭제하시겠습니까?")) {
+        vipList.splice(idx, 1);
+        saveState();
+        renderVipList();
+      }
+    }
+
+    function renderCompanyManager() {
+      const container = document.getElementById("companyManagerContainer");
+      container.innerHTML = "";
+
+      companies.forEach((c, idx) => {
+        const itemElem = document.createElement("div");
+        itemElem.className = "bg-slate-900 p-2.5 rounded-xl border border-slate-700 flex justify-between items-center text-xs";
+        itemElem.innerHTML = `
+          <div>
+            <div class="flex items-center gap-1.5 mb-0.5">
+              <span class="font-extrabold text-amber-300 text-sm">[${escapeHtml(c.shortName)}]</span>
+              <span class="font-bold text-white">${escapeHtml(c.name)}</span>
+              <span class="bg-slate-800 text-slate-300 text-[10px] px-1.5 py-0.5 rounded border border-slate-700">${escapeHtml(c.category)}</span>
+            </div>
+            <div class="text-slate-400">연락처: <span class="font-mono text-slate-200">${escapeHtml(c.phone)}</span> | 디폴트규격: <span class="text-sky-400 font-bold">${escapeHtml(c.defaultBox)}</span></div>
+          </div>
+          <div class="flex gap-1">
+            <button onclick="editCompanyModal(${idx})" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-[11px] px-2 py-1 rounded border border-slate-600">수정</button>
+            <button onclick="deleteCompany(${idx})" class="bg-rose-950 hover:bg-rose-900 text-rose-300 text-[11px] px-2 py-1 rounded border border-rose-800/50">삭제</button>
+          </div>
+        `;
+        container.appendChild(itemElem);
+      });
+    }
+
+    function openCompanyFormModal() {
+      document.getElementById("companyEditIndex").value = "-1";
+      document.getElementById("companyModalTitle").innerText = "🏪 업체 등록 (엄격 분리)";
+      document.getElementById("companyShortInput").value = "";
+      document.getElementById("companyNameInput").value = "";
+      document.getElementById("companyCategoryInput").value = "고구마";
+      document.getElementById("companyPhoneInput").value = "";
+      document.getElementById("companyDefaultBoxInput").value = "B";
+      openModal("companyFormModal");
+    }
+
+    function editCompanyModal(idx) {
+      const c = companies[idx];
+      document.getElementById("companyEditIndex").value = idx;
+      document.getElementById("companyModalTitle").innerText = "🏪 업체 정보 수정";
+      document.getElementById("companyShortInput").value = c.shortName;
+      document.getElementById("companyNameInput").value = c.name;
+      document.getElementById("companyCategoryInput").value = c.category;
+      document.getElementById("companyPhoneInput").value = c.phone;
+      document.getElementById("companyDefaultBoxInput").value = c.defaultBox;
+      openModal("companyFormModal");
+    }
+
+    function saveCompanyForm() {
+      const idx = parseInt(document.getElementById("companyEditIndex").value);
+      const shortName = document.getElementById("companyShortInput").value.trim();
+      const name = document.getElementById("companyNameInput").value.trim();
+      const category = document.getElementById("companyCategoryInput").value.trim() || "건어물";
+      let phone = document.getElementById("companyPhoneInput").value.trim();
+      const defaultBox = document.getElementById("companyDefaultBoxInput").value;
+
+      if (!shortName || !name) {
+        alert("약칭과 상호명은 필수 입력입니다.");
+        return;
+      }
+
+      if (!phone) {
+        phone = name; // Default sender contact = Company Name
+      }
+
+      const compObj = { shortName, name, category, phone, defaultBox };
+
+      if (idx >= 0) {
+        companies[idx] = compObj;
+      } else {
+        companies.push(compObj);
+      }
+
+      saveState();
+      renderCompanyButtons();
+      renderCompanyManager();
+      closeModal("companyFormModal");
+    }
+
+    function deleteCompany(idx) {
+      if (confirm("이 업체를 삭제하시겠습니까?")) {
+        companies.splice(idx, 1);
+        saveState();
+        renderCompanyButtons();
+        renderCompanyManager();
+      }
+    }
+
+    // ==========================================
+    // 12. HISTORY & HANJIN CSV EXPORT
+    // ==========================================
+    function renderHistoryList() {
+      const container = document.getElementById("historyListContainer");
+      container.innerHTML = "";
+
+      if (historyList.length === 0) {
+        container.innerHTML = `<div class="text-xs text-slate-500 text-center py-4">접수된 내역이 없습니다.</div>`;
+        return;
+      }
+
+      historyList.forEach(item => {
+        const itemsStr = item.items.map(it => `${it.type} ${it.count}건`).join(", ");
+        const div = document.createElement("div");
+        div.className = "bg-slate-900 p-2.5 rounded-xl border border-slate-800 text-xs";
+        div.innerHTML = `
+          <div class="flex justify-between text-[11px] text-slate-400 mb-1">
+            <span>[${escapeHtml(item.category)}] <strong class="text-amber-300">${escapeHtml(item.companyName)}</strong></span>
+            <span class="font-mono">${escapeHtml(item.timestamp)}</span>
+          </div>
+          <div class="font-bold text-slate-200 text-sm mb-0.5">${escapeHtml(item.recipientName)} (${escapeHtml(item.phone)})</div>
+          <div class="text-slate-300">${escapeHtml(item.address)}</div>
+          <div class="text-sky-400 font-bold mt-1">규격: ${escapeHtml(itemsStr)} ${item.memo ? `(${escapeHtml(item.memo)})` : ''}</div>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    function clearTodayHistory() {
+      if (confirm("당일 접수 내역을 비우시겠습니까?")) {
+        historyList = [];
+        saveState();
+        renderHistoryList();
+      }
+    }
+
+    function downloadHanjinCSV() {
+      if (historyList.length === 0) {
+        alert("다운로드할 접수 내역이 없습니다.");
+        return;
+      }
+
+      // Hanjin Focus Web Standard CSV Format
+      let csvContent = "\uFEFF"; // UTF-8 BOM
+      csvContent += "보내는분,보내는분연락처,받는분,받는분연락처,받는분주소,수량,규격,메모\n";
+
+      historyList.forEach(item => {
+        const sender = item.companyName;
+        const senderPhone = item.phone || item.companyName;
+        const recipient = item.recipientName;
+        const recipientPhone = item.phone;
+        const address = `"${(item.address || '').replace(/"/g, '""')}"`;
+
+        item.items.forEach(it => {
+          csvContent += `"${sender}","${senderPhone}","${recipient}","${recipientPhone}",${address},${it.count},"${it.type}","${item.memo || ''}"\n`;
+        });
+      });
+
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = `가락몰_한진송장_접수내역_${new Date().toISOString().slice(0,10)}.csv`;
+      link.click();
+    }
+
+    // JSON Backup / Restore
+    function exportDataJSON() {
+      const data = {
+        companies,
+        vipList,
+        historyList,
+        geminiApiKey,
+        exportedAt: new Date().toISOString()
+      };
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = `가락몰_송장앱_백업_${new Date().toISOString().slice(0,10)}.json`;
+      link.click();
+    }
+
+    function importDataJSON(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const data = JSON.parse(e.target.result);
+          if (data.companies) companies = data.companies;
+          if (data.vipList) vipList = data.vipList;
+          if (data.historyList) historyList = data.historyList;
+          if (data.geminiApiKey) geminiApiKey = data.geminiApiKey;
+
+          saveState();
+          loadAppState();
+          alert("데이터가 성공적으로 복원되었습니다!");
+        } catch (err) {
+          alert("유효하지 않은 백업 파일입니다.");
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    function resetToInitialDefaults() {
+      if (confirm("모든 단골 및 업체 설정을 초기 기본 상태로 리셋하시겠습니까?")) {
+        localStorage.clear();
+        loadAppState();
+        renderCompanyButtons();
+        updateSelectedCompanyDisplay();
+        renderRecipientCards();
+        renderVipList();
+        renderCompanyManager();
+        renderHistoryList();
+        alert("초기 기본 데이터로 완전 리셋되었습니다.");
+      }
+    }
+
+    function escapeHtml(str) {
+      if (!str) return "";
+      return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+  </script>
+</body>
+</html>

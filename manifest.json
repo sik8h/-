@@ -1,0 +1,24 @@
+{
+  "name": "김환식 전용 가락몰 스마트 송장 접수기",
+  "short_name": "가락몰송장",
+  "description": "가락몰 스마트 송장 접수 및 단골 관리 PWA 웹앱",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#111827",
+  "theme_color": "#0284c7",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
