@@ -786,7 +786,7 @@
           { shortName: "영민상회", name: "영민상회", category: "건어물", phone: "010-5009-4623", defaultBox: "C" },
           { shortName: "우일수산", name: "우일수산", category: "건어물", phone: "010-7782-9901", defaultBox: "C" },
           { shortName: "대산건해", name: "대산건해", category: "건어물", phone: "010-8112-3004", defaultBox: "B" },
-          { shortName: "수도건해", name: "수도건해", category: "김", phone: "010-4820-5512", defaultBox: "D" }
+          { shortName: "수도건해", name: "수도건해", category: "김/건어물", phone: "010-9995-7869", defaultBox: "D", carrierSpec: "한진 D", location: "가락몰 건어물동" }
         ]
       },
       {
@@ -1183,7 +1183,8 @@
     }
 
     async function confirmAndSyncAllToSheet() {
-      if (confirm("홈페이지의 거래처와 출고 DB로 구글 시트를 업데이트하시겠습니까?\n출고 장부는 안전하게 보존됩니다.")) {
+      const confirmMsg = "웹앱에 분류된 폴더와 거래처 정보로 구글 시트 '거래처' 탭을 최신 업데이트하시겠습니까?\n(※ 기존 출고 장부는 안전하게 보존됩니다.)";
+      if (confirm(confirmMsg)) {
         await triggerSyncAllToSheet();
       }
     }
@@ -1192,14 +1193,39 @@
       const allStores = [];
       folders.forEach(f => {
         f.companies.forEach(c => {
+          let phone = c.phone || "";
+          let location = c.location || "";
+          let defaultItem = c.category || "";
+          let carrierSpec = c.carrierSpec || c.defaultBox || "B";
+          let category = f.name;
+
+          // 수도건해 정규 마스터 자동 복원 (A안)
+          if (c.name === "수도건해" || c.shortName === "수도건해") {
+            phone = '010-9995-7869';
+            location = '가락몰 건어물동';
+            defaultItem = '김/건어물';
+            carrierSpec = '한진 D';
+            category = '2경매장';
+            c.phone = phone;
+            c.category = defaultItem;
+            c.carrierSpec = carrierSpec;
+          }
+
+          // 2경매장에 속한 업체들(수도건해, 대산건해, 영화물산, 호돌이푸드, 강동건해) 검증
+          if (["수도건해", "대산건해", "영화물산", "호돌이푸드", "강동건해"].includes(c.name)) {
+            if (category !== '2경매장' && f.name.includes('2경매장')) {
+              category = '2경매장';
+            }
+          }
+
           allStores.push({
             code: c.shortName || c.name,
             name: c.name,
-            phone: c.phone || "",
-            location: "",
-            defaultItem: c.category || "",
-            carrierSpec: c.carrierSpec || c.defaultBox || "B",
-            category: f.name
+            phone: phone,
+            location: location,
+            defaultItem: defaultItem,
+            carrierSpec: carrierSpec,
+            category: category
           });
         });
       });
@@ -1212,7 +1238,8 @@
       }));
 
       await syncAllToSheetAsync(allStores, allCustomers);
-      alert("✅ 홈페이지 내용이 구글 시트에 완벽히 저장되었습니다!");
+      saveState();
+      alert("✅ 구글 시트 '거래처' 탭에 2경매장 등 최신 폴더 분류가 100% 일괄 동기화되었습니다!");
     }
 
     function handleExcelUpload(event) {
