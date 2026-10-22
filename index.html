@@ -207,7 +207,29 @@
             <input type="tel" id="vendorPhoneManualInput" oninput="updateVendorPhoneManual(this.value)" placeholder="업체 전화번호 입력 (예: 010-1234-5678)" class="w-full bg-slate-900 border border-rose-500 rounded-lg p-1.5 text-xs text-white font-mono">
           </div>
 
-          <div class="border-t border-slate-800 pt-2">
+          <div class="border-t border-slate-800 pt-2 space-y-2">
+            <!-- Consignment Section UI -->
+            <div id="consignmentContainer" class="p-2 bg-slate-950/80 rounded-xl border border-purple-500/30 space-y-2">
+              <div class="flex items-center justify-between">
+                <label class="flex items-center gap-1.5 cursor-pointer text-xs font-bold text-purple-300">
+                  <input type="checkbox" id="consignmentCheckbox" onchange="toggleConsignment(this.checked)" class="w-4 h-4 text-purple-600 rounded border-slate-700 focus:ring-purple-500">
+                  <span>📦 위탁 발송</span>
+                </label>
+                <!-- Purple One-Touch Chips for Consignment -->
+                <div id="consignmentChips" class="flex gap-1 overflow-x-auto">
+                  <!-- JS Dynamic Consignment Chips -->
+                </div>
+              </div>
+
+              <!-- Consignment Memory Button for Custom Consignments -->
+              <div id="consignmentCustomArea" class="hidden flex items-center gap-2 pt-1 border-t border-slate-800">
+                <button type="button" onclick="saveCustomConsignment()" class="bg-purple-800 hover:bg-purple-700 text-purple-100 text-[10px] px-2.5 py-1 rounded-lg font-bold border border-purple-500/50 active:scale-95 transition">
+                  💾 [자주 쓰는 위탁처 기억]
+                </button>
+                <span class="text-[10px] text-slate-400">입력된 발송인을 기억하여 다음에도 칩으로 표시합니다.</span>
+              </div>
+            </div>
+
             <button type="button" onclick="toggleActualSenderPanel()" class="text-[11px] text-sky-400 hover:text-sky-300 font-bold flex items-center justify-between w-full">
               <span>🔄 [실제 보내는사람(송장 발송인)이 업체와 다를 때]</span>
               <span id="senderPanelIcon">▼</span>
@@ -221,8 +243,8 @@
                 <!-- JS Recent Learned Senders -->
               </div>
               <div class="grid grid-cols-2 gap-2">
-                <input type="text" id="actualSenderNameInput" oninput="updateSummaryOutput()" placeholder="실제 발송인 상호/성명 *" class="bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-xs text-white">
-                <input type="tel" id="actualSenderPhoneInput" oninput="updateSummaryOutput()" placeholder="실제 발송인 연락처 *" class="bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-xs text-white font-mono">
+                <input type="text" id="actualSenderNameInput" oninput="handleActualSenderInput()" placeholder="실제 발송인 상호/성명 *" class="bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-xs text-white">
+                <input type="tel" id="actualSenderPhoneInput" oninput="handleActualSenderInput()" placeholder="실제 발송인 연락처 *" class="bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-xs text-white font-mono">
               </div>
             </div>
           </div>
@@ -743,7 +765,7 @@
     };
   </script>
   <script type="module">
-    import { fetchMasterDataFromSheet, resolveCategory, logOrderToSheetAsync, saveStoreToSheetAsync, fetchOrderLogsFromSheet, cancelOrderToSheetAsync, syncAllToSheetAsync } from './src/services/googleSheetService.js';
+    import { fetchMasterDataFromSheet, resolveCategory, logOrderToSheetAsync, saveStoreToSheetAsync, fetchOrderLogsFromSheet, cancelOrderToSheetAsync, deleteOrderToSheetAsync, syncAllToSheetAsync } from './src/services/googleSheetService.js';
 
     const DEFAULT_FOLDERS = [
       {
@@ -755,7 +777,7 @@
           { shortName: "성진상회", name: "성진상회", category: "건어물", phone: "010-5281-7383", defaultBox: "C" },
           { shortName: "금옥상회", name: "금옥상회", category: "건어물", phone: "010-8842-1209", defaultBox: "B" },
           { shortName: "신해드림", name: "신해드림", category: "건어물", phone: "010-2391-4458", defaultBox: "D" },
-          { shortName: "성광건해", name: "성광건해", category: "건어물", phone: "010-4094-6016", defaultBox: "B" },
+          { shortName: "성광건해", name: "성광건해", category: "건어물", phone: "010-4094-6016", defaultBox: "B", consignments: [{ name: "오지다건해", phone: "010-4094-0000", location: "가락몰 건어물동" }] },
           { shortName: "미나유통", name: "미나유통", category: "건어물", phone: "010-4250-2647", defaultBox: "B" },
           { shortName: "우성상회", name: "우성상회", category: "건어물", phone: "010-9128-4432", defaultBox: "B" },
           { shortName: "창신수산", name: "창신수산", category: "건어물", phone: "010-5281-7383", defaultBox: "C" },
@@ -840,6 +862,8 @@
     let unpaidLedger = {};
     let itemChips = [];
     let learnedSenders = [];
+    let customConsignments = [];
+    let isConsignment = false;
     let geminiApiKey = "";
     let isMultiMode = false;
     let cachedOrderLogs = [];
@@ -886,6 +910,11 @@
       } catch (e) { learnedSenders = []; }
 
       try {
+        const savedConsign = localStorage.getItem("woojung_consignments");
+        customConsignments = savedConsign ? JSON.parse(savedConsign) : [];
+      } catch (e) { customConsignments = []; }
+
+      try {
         const savedLogs = localStorage.getItem("cached_logs");
         cachedOrderLogs = savedLogs ? JSON.parse(savedLogs) : [];
       } catch (e) { cachedOrderLogs = []; }
@@ -910,6 +939,7 @@
       localStorage.setItem("custom_items", JSON.stringify(itemChips));
       localStorage.setItem("woojung_itemChips", JSON.stringify(itemChips));
       localStorage.setItem("woojung_learned_senders", JSON.stringify(learnedSenders));
+      localStorage.setItem("woojung_consignments", JSON.stringify(customConsignments));
       localStorage.setItem("cached_logs", JSON.stringify(cachedOrderLogs));
       localStorage.setItem("gemini_api_key", geminiApiKey);
       localStorage.setItem("woojung_geminiKey", geminiApiKey);
@@ -944,6 +974,132 @@
       if (learnedSenders.length > 10) learnedSenders = learnedSenders.slice(0, 10);
       saveState();
       renderLearnedSendersChips();
+    }
+
+    function renderConsignmentSection() {
+      const chipContainer = document.getElementById("consignmentChips");
+      const checkbox = document.getElementById("consignmentCheckbox");
+      const customArea = document.getElementById("consignmentCustomArea");
+      if (!chipContainer) return;
+
+      chipContainer.innerHTML = "";
+
+      let availableConsignments = [];
+
+      if (selectedCompany) {
+        if (selectedCompany.consignments && Array.isArray(selectedCompany.consignments)) {
+          availableConsignments.push(...selectedCompany.consignments);
+        } else if (selectedCompany.name === "성광건해") {
+          availableConsignments.push({ name: "오지다건해", phone: "010-4094-0000", location: "가락몰 건어물동" });
+        }
+
+        const storeCustoms = customConsignments.filter(c => !c.storeName || c.storeName === selectedCompany.name);
+        storeCustoms.forEach(sc => {
+          if (!availableConsignments.some(a => a.name === sc.name)) {
+            availableConsignments.push(sc);
+          }
+        });
+      }
+
+      availableConsignments.forEach(item => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "bg-purple-600 hover:bg-purple-700 text-white font-bold text-[11px] px-2.5 py-1 rounded-lg shadow active:scale-95 transition flex items-center gap-1 shrink-0";
+        btn.innerHTML = `<span>⚡ 위탁: ${escapeHtml(item.name)}</span>`;
+        btn.onclick = () => applyConsignmentPreset(item.name, item.phone);
+        chipContainer.appendChild(btn);
+      });
+
+      if (checkbox) checkbox.checked = isConsignment;
+      if (customArea) {
+        if (isConsignment) customArea.classList.remove("hidden");
+        else customArea.classList.add("hidden");
+      }
+    }
+
+    function applyConsignmentPreset(name, phone) {
+      isConsignment = true;
+      const checkbox = document.getElementById("consignmentCheckbox");
+      if (checkbox) checkbox.checked = true;
+
+      const nameInput = document.getElementById("actualSenderNameInput");
+      const phoneInput = document.getElementById("actualSenderPhoneInput");
+      if (nameInput) nameInput.value = name;
+      if (phoneInput) phoneInput.value = phone;
+
+      const panel = document.getElementById("actualSenderPanel");
+      if (panel) panel.classList.remove("hidden");
+      const icon = document.getElementById("senderPanelIcon");
+      if (icon) icon.innerText = "▲";
+
+      renderConsignmentSection();
+      updateSummaryOutput();
+    }
+
+    function toggleConsignment(checked) {
+      isConsignment = checked;
+      const nameInput = document.getElementById("actualSenderNameInput");
+      const phoneInput = document.getElementById("actualSenderPhoneInput");
+      const panel = document.getElementById("actualSenderPanel");
+      const icon = document.getElementById("senderPanelIcon");
+
+      if (checked) {
+        let defaultConsignment = null;
+        if (selectedCompany?.consignments?.length) {
+          defaultConsignment = selectedCompany.consignments[0];
+        } else if (selectedCompany?.name === "성광건해") {
+          defaultConsignment = { name: "오지다건해", phone: "010-4094-0000" };
+        }
+
+        if (defaultConsignment) {
+          if (nameInput) nameInput.value = defaultConsignment.name;
+          if (phoneInput) phoneInput.value = defaultConsignment.phone;
+        }
+
+        if (panel) panel.classList.remove("hidden");
+        if (icon) icon.innerText = "▲";
+      } else {
+        if (nameInput) nameInput.value = "";
+        if (phoneInput) phoneInput.value = "";
+        if (panel) panel.classList.add("hidden");
+        if (icon) icon.innerText = "▼";
+      }
+
+      renderConsignmentSection();
+      updateSummaryOutput();
+    }
+
+    function saveCustomConsignment() {
+      const nameInput = document.getElementById("actualSenderNameInput");
+      const phoneInput = document.getElementById("actualSenderPhoneInput");
+      const name = nameInput ? nameInput.value.trim() : "";
+      const phone = phoneInput ? phoneInput.value.trim() : "";
+
+      if (!name || !phone) {
+        return alert("위탁처 성명과 연락처를 모두 입력해 주세요.");
+      }
+
+      const storeName = selectedCompany ? selectedCompany.name : "";
+      const exists = customConsignments.some(c => c.storeName === storeName && c.name === name);
+      if (!exists) {
+        customConsignments.push({ storeName, name, phone });
+        saveState();
+        renderConsignmentSection();
+        alert(`✅ [${name}] 위탁처가 자주 쓰는 위탁처로 기억되었습니다.`);
+      } else {
+        alert(`[${name}] 이미 등록된 위탁처입니다.`);
+      }
+    }
+
+    function handleActualSenderInput() {
+      const name = document.getElementById("actualSenderNameInput").value.trim();
+      if (name && !isConsignment) {
+        isConsignment = true;
+        const checkbox = document.getElementById("consignmentCheckbox");
+        if (checkbox) checkbox.checked = true;
+        renderConsignmentSection();
+      }
+      updateSummaryOutput();
     }
 
     function toggleMultiMode(enabled) {
@@ -1368,6 +1524,7 @@ ${JSON.stringify(safeCustomers.slice(0, 50))}`;
       renderCompanyAccordion();
       renderItemChips();
       renderLearnedSendersChips();
+      renderConsignmentSection();
       updateSelectedCompanyDisplay();
 
       if (recipientCards.length === 0) addRecipientCard();
@@ -1392,6 +1549,11 @@ ${JSON.stringify(safeCustomers.slice(0, 50))}`;
 
     // Make global handlers for window
     window.toggleMultiMode = toggleMultiMode;
+    window.toggleConsignment = toggleConsignment;
+    window.applyConsignmentPreset = applyConsignmentPreset;
+    window.saveCustomConsignment = saveCustomConsignment;
+    window.handleActualSenderInput = handleActualSenderInput;
+    window.deleteOrderLogRow = deleteOrderLogRow;
     window.triggerManualSync = triggerManualSync;
     window.triggerSyncAllToSheet = triggerSyncAllToSheet;
     window.confirmAndSyncAllToSheet = confirmAndSyncAllToSheet;
@@ -1563,10 +1725,10 @@ ${JSON.stringify(safeCustomers.slice(0, 50))}`;
           <td class="p-2 whitespace-nowrap font-bold text-amber-200">${escapeHtml(String(item.item || ''))} ${item.quantity ? escapeHtml(String(item.quantity)) + '건' : ''}</td>
           <td class="p-2 max-w-xs truncate text-[10px] text-slate-400">${escapeHtml(String(item.memo || ''))}</td>
           <td class="p-2 whitespace-nowrap text-center">
-            ${isCancelled
-              ? `<span class="text-[10px] text-rose-500 font-bold">취소됨</span>`
-              : `<button onclick="cancelOrderLogRow('${item.rowId || idx}')" class="bg-rose-950 hover:bg-rose-900 text-rose-300 border border-rose-800 px-2 py-0.5 rounded text-[10px] font-bold">🗑️ 취소</button>`
-            }
+            <div class="flex items-center justify-center gap-1">
+              ${!isCancelled ? `<button onclick="cancelOrderLogRow('${item.rowId || idx}')" class="bg-slate-700 hover:bg-slate-600 text-slate-200 border border-slate-600 px-2 py-0.5 rounded text-[10px] font-bold transition">취소</button>` : ''}
+              <button onclick="deleteOrderLogRow('${item.rowId || idx}')" class="bg-rose-950/80 hover:bg-rose-900 text-rose-300 border border-rose-800 px-2 py-0.5 rounded text-[10px] font-bold transition" title="장부에서 완전히 영구 삭제">🗑️ 삭제</button>
+            </div>
           </td>
         `;
         tbody.appendChild(tr);
@@ -1584,6 +1746,29 @@ ${JSON.stringify(safeCustomers.slice(0, 50))}`;
       renderOrderLogsTable();
       cancelOrderToSheetAsync(rowId);
       alert("해당 출고 건이 취소 처리되었습니다.");
+    }
+
+    function deleteOrderLogRow(rowId) {
+      const log = cachedOrderLogs.find((l, idx) => l.rowId === rowId || idx == rowId);
+      if (!log) return;
+
+      const isCancelled = log.status === "취소됨" || log.cancelled === true;
+      const storeName = log.store || "";
+      const recipientName = log.recipientName || log.recipient || "";
+
+      const confirmMsg = isCancelled
+        ? `[${storeName}] ${recipientName}님의 '취소된 내역'을 장부에서 영구히 완전히 삭제하시겠습니까?\n※ 구글 시트에서도 행이 완전히 삭제되며 복구할 수 없습니다.`
+        : `[${storeName}] ${recipientName}님의 출고 내역을 영구히 삭제하시겠습니까?\n※ 구글 시트 장부에서도 완전히 삭제됩니다.`;
+
+      if (!confirm(confirmMsg)) return;
+
+      cachedOrderLogs = cachedOrderLogs.filter((l, idx) => (l.rowId ? l.rowId !== rowId : idx != rowId));
+      localStorage.setItem("cached_logs", JSON.stringify(cachedOrderLogs));
+      saveState();
+      renderOrderLogsTable();
+
+      deleteOrderToSheetAsync(log);
+      alert("🗑️ 출고 내역이 영구 삭제되었습니다.");
     }
 
     function openModal(id) {
@@ -1702,6 +1887,7 @@ ${JSON.stringify(safeCustomers.slice(0, 50))}`;
         renderCompanyAccordion(document.getElementById("companySearchInput").value);
         renderItemChips();
         updateSelectedCompanyDisplay();
+        renderConsignmentSection();
         recipientCards.forEach(c => validateCard(c));
         updateSummaryOutput();
       }
@@ -2566,8 +2752,18 @@ ${JSON.stringify(safeCustomers.slice(0, 50))}`;
 
       // Optimistic local log storage & Trigger Google Sheet async order logging
       const nowStr = new Date().toLocaleString("ko-KR");
+      const actualSenderName = document.getElementById("actualSenderNameInput") ? document.getElementById("actualSenderNameInput").value.trim() : "";
+
       recipientCards.forEach(card => {
         card.items.forEach(it => {
+          let fullMemo = card.memo ? card.memo.trim() : "";
+          if (isConsignment || actualSenderName) {
+            const consignTag = actualSenderName ? `(위탁: ${actualSenderName})` : "(위탁)";
+            if (!fullMemo.includes(consignTag)) {
+              fullMemo = fullMemo ? `${fullMemo} ${consignTag}` : consignTag;
+            }
+          }
+
           const logItem = {
             rowId: Date.now() + "_" + Math.random().toString(36).substr(2, 4),
             timestamp: nowStr,
@@ -2579,7 +2775,7 @@ ${JSON.stringify(safeCustomers.slice(0, 50))}`;
             recipientAddr: card.address,
             item: card.itemOverride || currentSelectedCategory,
             quantity: it.count,
-            memo: card.memo || "",
+            memo: fullMemo,
             status: "접수완료"
           };
 

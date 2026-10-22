@@ -174,6 +174,26 @@ export function cancelOrderToSheetAsync(rowId: string | number): void {
   }
 }
 
+// 구글 시트 출고내역 해당 행 영구 삭제
+export function deleteOrderToSheetAsync(log: any): void {
+  try {
+    fetch(GAS_URL, {
+      method: "POST",
+      mode: "no-cors",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({
+        action: "delete_log",
+        time: log.timestamp || log.date || "",
+        recipient: log.recipientName || log.recipient || "",
+        phone: log.recipientPhone || log.phone || "",
+        cancelRow: log.rowId
+      })
+    }).catch(e => console.warn("출고 삭제 시트 오류:", e));
+  } catch (err) {
+    console.warn("출고 삭제 예외:", err);
+  }
+}
+
 // 웹앱 전체 데이터 구글 시트로 일괄 업로드 저장
 export async function syncAllToSheetAsync(stores: any[], customers: any[]): Promise<boolean> {
   try {
