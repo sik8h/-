@@ -78,6 +78,21 @@ export async function fetchMasterDataFromSheet() {
   } catch (err) {
     console.warn("구글 시트 연동 실패 (로컬 캐시 사용):", err);
   }
+
+  // 로컬 캐시 파싱 에러 방어
+  try {
+    const cStores = localStorage.getItem("cached_stores");
+    const cCust = localStorage.getItem("cached_customers");
+    if (cStores || cCust) {
+      return {
+        stores: cStores ? JSON.parse(cStores) : [],
+        customers: cCust ? JSON.parse(cCust) : []
+      };
+    }
+  } catch (e) {
+    console.warn("로컬 캐시 파싱 에러 방어:", e);
+  }
+
   return null;
 }
 

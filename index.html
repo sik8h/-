@@ -732,6 +732,16 @@
   </div>
 
   <!-- JavaScript Engine v3.5 & Google Sheet Integration -->
+  <script type="text/javascript">
+    window.onerror = function(msg, url, lineNo, columnNo, error) {
+      console.error("Global Runtime Error Boundary:", msg, error);
+      return true; // Prevents White Screen of Death
+    };
+    window.onunhandledrejection = function(event) {
+      console.error("Unhandled Promise Rejection Boundary:", event.reason);
+      return true;
+    };
+  </script>
   <script type="module">
     import { fetchMasterDataFromSheet, resolveCategory, logOrderToSheetAsync, saveStoreToSheetAsync, fetchOrderLogsFromSheet, cancelOrderToSheetAsync, syncAllToSheetAsync } from './src/services/googleSheetService.js';
 
@@ -843,29 +853,45 @@
     let draggedItemIdx = null;
 
     function loadAppState() {
-      const savedFolders = localStorage.getItem("woojung_folders");
-      folders = savedFolders ? JSON.parse(savedFolders) : [...DEFAULT_FOLDERS];
+      try {
+        const savedFolders = localStorage.getItem("woojung_folders");
+        folders = savedFolders ? JSON.parse(savedFolders) : [...DEFAULT_FOLDERS];
+      } catch (e) { folders = [...DEFAULT_FOLDERS]; }
 
-      const savedVip = localStorage.getItem("woojung_vipList");
-      vipList = savedVip ? JSON.parse(savedVip) : [...INITIAL_VIP_LIST];
+      try {
+        const savedVip = localStorage.getItem("woojung_vipList");
+        vipList = savedVip ? JSON.parse(savedVip) : [...INITIAL_VIP_LIST];
+      } catch (e) { vipList = [...INITIAL_VIP_LIST]; }
 
-      const savedHist = localStorage.getItem("woojung_history");
-      historyList = savedHist ? JSON.parse(savedHist) : [];
+      try {
+        const savedHist = localStorage.getItem("woojung_history");
+        historyList = savedHist ? JSON.parse(savedHist) : [];
+      } catch (e) { historyList = []; }
 
-      const savedUnpaid = localStorage.getItem("woojung_unpaidLedger");
-      unpaidLedger = savedUnpaid ? JSON.parse(savedUnpaid) : {};
+      try {
+        const savedUnpaid = localStorage.getItem("woojung_unpaidLedger");
+        unpaidLedger = savedUnpaid ? JSON.parse(savedUnpaid) : {};
+      } catch (e) { unpaidLedger = {}; }
 
-      const savedChips = localStorage.getItem("custom_items") || localStorage.getItem("woojung_itemChips");
-      itemChips = savedChips ? JSON.parse(savedChips) : [...DEFAULT_ITEM_CHIPS];
+      try {
+        const savedChips = localStorage.getItem("custom_items") || localStorage.getItem("woojung_itemChips");
+        itemChips = savedChips ? JSON.parse(savedChips) : [...DEFAULT_ITEM_CHIPS];
+      } catch (e) { itemChips = [...DEFAULT_ITEM_CHIPS]; }
 
-      const savedSenders = localStorage.getItem("woojung_learned_senders");
-      learnedSenders = savedSenders ? JSON.parse(savedSenders) : [];
+      try {
+        const savedSenders = localStorage.getItem("woojung_learned_senders");
+        learnedSenders = savedSenders ? JSON.parse(savedSenders) : [];
+      } catch (e) { learnedSenders = []; }
 
-      const savedLogs = localStorage.getItem("cached_logs");
-      cachedOrderLogs = savedLogs ? JSON.parse(savedLogs) : [];
+      try {
+        const savedLogs = localStorage.getItem("cached_logs");
+        cachedOrderLogs = savedLogs ? JSON.parse(savedLogs) : [];
+      } catch (e) { cachedOrderLogs = []; }
 
       geminiApiKey = localStorage.getItem("gemini_api_key") || localStorage.getItem("woojung_geminiKey") || "";
-      if (geminiApiKey) document.getElementById("geminiApiKeyInput").value = geminiApiKey;
+      if (geminiApiKey && document.getElementById("geminiApiKeyInput")) {
+        document.getElementById("geminiApiKeyInput").value = geminiApiKey;
+      }
       updateAiStatusIndicator();
 
       selectedCompany = folders[0]?.companies?.[0] || { shortName: "상아건해", name: "상아건해", category: "건어물", phone: "010-5321-9988", defaultBox: "B" };
@@ -1152,10 +1178,15 @@
         return;
       }
 
-      // Collect live app state for prompt
+      // Collect safe live app state for prompt
+      const safeFolders = Array.isArray(folders) ? folders : [];
+      const safeLogs = Array.isArray(cachedOrderLogs) ? cachedOrderLogs : [];
+      const safeCustomers = Array.isArray(vipList) ? vipList : [];
+
       const allStores = [];
-      folders.forEach(f => {
-        f.companies.forEach(c => {
+      safeFolders.forEach(f => {
+        const safeComps = Array.isArray(f?.companies) ? f.companies : [];
+        safeComps.forEach(c => {
           allStores.push({ name: c.name, phone: c.phone || "", defaultItem: c.category || "", carrierSpec: c.carrierSpec || c.defaultBox || "B", location: f.name });
         });
       });
@@ -1173,10 +1204,10 @@
 ${JSON.stringify(allStores)}
 
 [오늘 실시간 출고 장부]:
-${JSON.stringify(cachedOrderLogs.slice(0, 30))}
+${JSON.stringify(safeLogs.slice(0, 30))}
 
 [수취인 출고 DB (단골)]:
-${JSON.stringify(vipList.slice(0, 50))}`;
+${JSON.stringify(safeCustomers.slice(0, 50))}`;
 
       try {
         const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`, {
