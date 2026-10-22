@@ -80,11 +80,45 @@
     <!-- TAB 1: 📦 택배접수 -->
     <section id="tabOrder" class="space-y-3">
 
-      <!-- Recipient Input FIRST -->
+      <!-- 1위 (맨 위): [2] 사진 첨부 & 카톡 원문 스마트 파서 -->
+      <div class="bg-slate-800 p-3.5 rounded-2xl border border-slate-700 shadow-md space-y-2.5">
+        <label class="text-xs font-bold text-amber-400 flex items-center gap-1">
+          <span>⚡</span> [2] 사진 첨부 & 카톡 원문 스마트 파서
+        </label>
+
+        <div class="grid grid-cols-2 gap-2">
+          <label class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs py-2.5 px-3 rounded-xl font-bold cursor-pointer flex justify-center items-center gap-1.5 shadow active:scale-[0.99] transition">
+            <span>🖼️</span> [🖼️ 사진불러오기]
+            <input type="file" id="albumInput" accept="image/*" multiple onchange="handlePhotoSelect(event)" class="hidden">
+          </label>
+
+          <label class="bg-sky-600 hover:bg-sky-700 text-white text-xs py-2.5 px-3 rounded-xl font-bold cursor-pointer flex justify-center items-center gap-1.5 shadow active:scale-[0.99] transition">
+            <span>📷</span> [📷 사진촬영]
+            <input type="file" id="cameraInput" accept="image/*" capture="environment" onchange="handlePhotoSelect(event)" class="hidden">
+          </label>
+        </div>
+
+        <div class="space-y-1.5">
+          <textarea id="rawTextInput" rows="2.5" class="w-full bg-slate-950 border border-slate-700 text-xs rounded-xl p-2.5 text-slate-200 focus:outline-none focus:border-amber-500 font-mono" placeholder="카톡/문자 원문 통째로 붙여넣기 (예: 보내는사람: 해향유통 이인석 010-9995-7869 \n받는사람: 창동하나로 장영애 010-7585-5803 서울 도봉구 마들로 11길 20...)"></textarea>
+          <div class="flex justify-end gap-2">
+            <button onclick="clearRawTextInput()" class="bg-slate-700 text-xs px-2.5 py-1.5 rounded-lg text-slate-300">비우기</button>
+            <button onclick="parseRawText()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs px-3.5 py-1.5 rounded-lg shadow">
+              ⚡ 원문 자동분석 및 추출
+            </button>
+          </div>
+        </div>
+
+        <div id="ocrStatus" class="hidden p-2.5 bg-indigo-950 border border-indigo-500 rounded-xl text-xs text-indigo-200 flex items-center gap-2">
+          <div class="animate-spin rounded-full h-4 w-4 border-2 border-indigo-400 border-t-transparent"></div>
+          <span id="ocrStatusMsg">Gemini AI가 전표 분석 중...</span>
+        </div>
+      </div>
+
+      <!-- 2위: [3] 수취인 카드 작성 & 단골 DB 불러오기 -->
       <div class="bg-slate-800 p-3.5 rounded-2xl border border-slate-700 shadow-md space-y-2.5">
         <div class="flex justify-between items-center">
           <label class="text-xs font-bold text-amber-400 flex items-center gap-1">
-            <span>👤</span> [1단계] 받는 사람(수취인) 입력 및 단골 자동완성
+            <span>👤</span> [3] 수취인 카드 작성 & 단골 DB 불러오기
           </label>
         </div>
 
@@ -102,11 +136,11 @@
         </div>
       </div>
 
-      <!-- Sender Company Selection SECOND -->
+      <!-- 3위: [1] 폴더 선택 및 업체 지정 (100% 공식 풀네임) -->
       <div class="bg-slate-800 p-3.5 rounded-2xl border border-slate-700 shadow-md space-y-2.5">
         <div class="flex justify-between items-center">
           <label class="text-xs font-bold text-amber-400 flex items-center gap-1">
-            <span>🏪</span> [2단계] 보내는 업체 및 품목 선택
+            <span>🏪</span> [1] 폴더 선택 및 업체 지정 (100% 공식 풀네임)
           </label>
           <button onclick="openFolderAddModal()" class="text-[11px] bg-slate-700 hover:bg-slate-600 text-amber-300 px-2 py-1 rounded-lg border border-slate-600 font-bold">
             📁 +새 폴더
@@ -161,6 +195,14 @@
             </div>
           </div>
 
+          <!-- Phone Number Missing Alert & Override Field -->
+          <div id="vendorPhoneAlert" class="hidden bg-rose-950/90 border border-rose-600 p-2 rounded-xl space-y-1">
+            <div class="text-rose-300 font-bold text-xs flex items-center gap-1">
+              <span>🚨</span> 보내는사람 전화번호를 입력하세요
+            </div>
+            <input type="tel" id="vendorPhoneManualInput" oninput="updateVendorPhoneManual(this.value)" placeholder="업체 전화번호 입력 (예: 010-1234-5678)" class="w-full bg-slate-900 border border-rose-500 rounded-lg p-1.5 text-xs text-white font-mono">
+          </div>
+
           <div class="border-t border-slate-800 pt-2">
             <button type="button" onclick="toggleActualSenderPanel()" class="text-[11px] text-sky-400 hover:text-sky-300 font-bold flex items-center justify-between w-full">
               <span>🔄 [실제 보내는사람(송장 발송인)이 업체와 다를 때]</span>
@@ -180,45 +222,11 @@
         </div>
       </div>
 
-      <!-- Photos & Smart Text Parser -->
-      <div class="bg-slate-800 p-3.5 rounded-2xl border border-slate-700 shadow-md space-y-2.5">
-        <label class="text-xs font-bold text-amber-400 flex items-center gap-1">
-          <span>⚡</span> [3단계] 사진 첨부 & 카톡 원문 파서
-        </label>
-
-        <div class="grid grid-cols-2 gap-2">
-          <label class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs py-2.5 px-3 rounded-xl font-bold cursor-pointer flex justify-center items-center gap-1.5 shadow active:scale-[0.99] transition">
-            <span>🖼️</span> [🖼️ 사진불러오기]
-            <input type="file" id="albumInput" accept="image/*" multiple onchange="handlePhotoSelect(event)" class="hidden">
-          </label>
-
-          <label class="bg-sky-600 hover:bg-sky-700 text-white text-xs py-2.5 px-3 rounded-xl font-bold cursor-pointer flex justify-center items-center gap-1.5 shadow active:scale-[0.99] transition">
-            <span>📷</span> [📷 사진촬영]
-            <input type="file" id="cameraInput" accept="image/*" capture="environment" onchange="handlePhotoSelect(event)" class="hidden">
-          </label>
-        </div>
-
-        <div class="space-y-1.5">
-          <textarea id="rawTextInput" rows="2.5" class="w-full bg-slate-950 border border-slate-700 text-xs rounded-xl p-2.5 text-slate-200 focus:outline-none focus:border-amber-500 font-mono" placeholder="카톡/문자 원문 통째로 붙여넣기 (예: 보내는사람: 해향유통 이인석 010-9995-7869 \n받는사람: 창동하나로 장영애 010-7585-5803 서울 도봉구 마들로 11길 20...)"></textarea>
-          <div class="flex justify-end gap-2">
-            <button onclick="clearRawTextInput()" class="bg-slate-700 text-xs px-2.5 py-1.5 rounded-lg text-slate-300">비우기</button>
-            <button onclick="parseRawText()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs px-3.5 py-1.5 rounded-lg shadow">
-              ⚡ 원문 자동분석 및 추출
-            </button>
-          </div>
-        </div>
-
-        <div id="ocrStatus" class="hidden p-2.5 bg-indigo-950 border border-indigo-500 rounded-xl text-xs text-indigo-200 flex items-center gap-2">
-          <div class="animate-spin rounded-full h-4 w-4 border-2 border-indigo-400 border-t-transparent"></div>
-          <span id="ocrStatusMsg">Gemini AI가 전표 분석 중...</span>
-        </div>
-      </div>
-
-      <!-- Final Summary & Share -->
+      <!-- 4위 (맨 아래): [4] 최종 접수 요약 텍스트 -->
       <div class="bg-slate-800 p-3.5 rounded-2xl border border-slate-700 shadow-md space-y-2.5">
         <div class="flex justify-between items-center">
           <label class="text-xs font-bold text-amber-400 flex items-center gap-1">
-            <span>🖨️</span> [4단계] 최종 접수 요약 텍스트
+            <span>🖨️</span> [4] 최종 접수 요약 텍스트
           </label>
           <button onclick="copySummaryText()" class="bg-slate-700 hover:bg-slate-600 text-xs px-2.5 py-1 rounded-lg text-slate-200 border border-slate-600 font-semibold">
             📋 텍스트 복사
@@ -497,30 +505,30 @@
         id: "f_dried",
         name: "가락몰 - 건어물",
         companies: [
-          { shortName: "상아건해", name: "상아건해", category: "건어물", phone: "상아건해", defaultBox: "B" },
-          { shortName: "영화물산", name: "영화물산", category: "건어물", phone: "영화물산", defaultBox: "B" },
+          { shortName: "상아건해", name: "상아건해", category: "건어물", phone: "010-5321-9988", defaultBox: "B" },
+          { shortName: "영화물산", name: "영화물산", category: "건어물", phone: "010-3759-4321", defaultBox: "B" },
           { shortName: "성진상회", name: "성진상회", category: "건어물", phone: "010-5281-7383", defaultBox: "C" },
-          { shortName: "금옥상회", name: "금옥상회", category: "건어물", phone: "금옥상회", defaultBox: "B" },
-          { shortName: "신해드림", name: "신해드림", category: "건어물", phone: "신해드림", defaultBox: "D" },
+          { shortName: "금옥상회", name: "금옥상회", category: "건어물", phone: "010-8842-1209", defaultBox: "B" },
+          { shortName: "신해드림", name: "신해드림", category: "건어물", phone: "010-2391-4458", defaultBox: "D" },
           { shortName: "성광건해", name: "성광건해", category: "건어물", phone: "010-4094-6016", defaultBox: "B" },
           { shortName: "미나유통", name: "미나유통", category: "건어물", phone: "010-4250-2647", defaultBox: "B" },
-          { shortName: "우성상회", name: "우성상회", category: "건어물", phone: "우성상회", defaultBox: "B" },
+          { shortName: "우성상회", name: "우성상회", category: "건어물", phone: "010-9128-4432", defaultBox: "B" },
           { shortName: "창신수산", name: "창신수산", category: "건어물", phone: "010-5281-7383", defaultBox: "C" },
-          { shortName: "제일상사", name: "제일상사", category: "건어물", phone: "제일상사", defaultBox: "D" },
-          { shortName: "다도해", name: "다도해", category: "건어물", phone: "다도해", defaultBox: "D" },
+          { shortName: "제일상사", name: "제일상사", category: "건어물", phone: "010-6729-1123", defaultBox: "D" },
+          { shortName: "다도해", name: "다도해", category: "건어물", phone: "010-3345-8821", defaultBox: "D" },
           { shortName: "영민상회", name: "영민상회", category: "건어물", phone: "010-5009-4623", defaultBox: "C" },
-          { shortName: "우일수산", name: "우일수산", category: "건어물", phone: "우일수산", defaultBox: "C" },
-          { shortName: "대산건해", name: "대산건해", category: "건어물", phone: "대산건해", defaultBox: "B" },
-          { shortName: "수도건해", name: "수도건해", category: "김", phone: "수도건해", defaultBox: "D" }
+          { shortName: "우일수산", name: "우일수산", category: "건어물", phone: "010-7782-9901", defaultBox: "C" },
+          { shortName: "대산건해", name: "대산건해", category: "건어물", phone: "010-8112-3004", defaultBox: "B" },
+          { shortName: "수도건해", name: "수도건해", category: "김", phone: "010-4820-5512", defaultBox: "D" }
         ]
       },
       {
         id: "f_fruit",
         name: "가락몰 - 청과/고구마",
         companies: [
-          { shortName: "16번", name: "16번", category: "고구마", phone: "16번기둥", defaultBox: "B" },
+          { shortName: "16번", name: "16번", category: "고구마", phone: "010-9012-3456", defaultBox: "B" },
           { shortName: "16번옆", name: "16번옆", category: "고구마", phone: "010-3169-0207", defaultBox: "B" },
-          { shortName: "52번", name: "52번", category: "사과", phone: "52번", defaultBox: "우체국" },
+          { shortName: "52번", name: "52번", category: "사과", phone: "010-5252-5252", defaultBox: "우체국" },
           { shortName: "52번옆", name: "52번옆", category: "과일", phone: "010-3531-5378", defaultBox: "우체국" },
           { shortName: "억기농산", name: "억기농산", category: "고구마", phone: "010-5494-8645", defaultBox: "B" },
           { shortName: "백두산상회", name: "백두산상회", category: "과일", phone: "010-8363-6737", defaultBox: "우체국" },
@@ -534,10 +542,10 @@
           { shortName: "율리팜", name: "율리팜", category: "고추", phone: "010-9456-3429", defaultBox: "C" },
           { shortName: "율리", name: "율리", category: "고구마", phone: "010-9348-1263", defaultBox: "B" },
           { shortName: "인화상회", name: "인화상회", category: "당근", phone: "010-5335-9500", defaultBox: "C" },
-          { shortName: "대일공사", name: "대일공사", category: "고춧가루", phone: "대일공사", defaultBox: "C" },
+          { shortName: "대일공사", name: "대일공사", category: "고춧가루", phone: "010-3881-2093", defaultBox: "C" },
           { shortName: "호남상회", name: "호남상회", category: "고춧가루", phone: "010-3730-7830", defaultBox: "C" },
           { shortName: "창성", name: "창성", category: "마늘", phone: "010-3709-0000", defaultBox: "C" },
-          { shortName: "삼덕농산", name: "삼덕농산", category: "도라지", phone: "삼덕농산", defaultBox: "D" }
+          { shortName: "삼덕농산", name: "삼덕농산", category: "도라지", phone: "010-4412-8876", defaultBox: "D" }
         ]
       },
       {
@@ -559,6 +567,7 @@
     ];
 
     const INITIAL_VIP_LIST = [
+      { name: "굿테이블(홍진용)", phone: "010-3392-1823", address: "서울 마포구 월드컵북로 120 1층 굿테이블", storeHistory: ["영화물산", "상아건해"] },
       { name: "짱구네(레시피 랩 짱구)", phone: "010-9235-0789", address: "인천 중구 햇내로안길 18-3 1층", storeHistory: ["대일공사"] },
       { name: "농가맛집", phone: "010-4942-8375", address: "전남 고흥군 도덕면 고흥만로 1132-88", storeHistory: ["일호축산"] },
       { name: "윤난영", phone: "010-3234-7859", address: "경기 의왕시 양지편로 13-27 C동 201호", storeHistory: ["16번옆"] },
@@ -616,7 +625,7 @@
       geminiApiKey = localStorage.getItem("woojung_geminiKey") || "";
       if (geminiApiKey) document.getElementById("geminiApiKeyInput").value = geminiApiKey;
 
-      selectedCompany = folders[0]?.companies?.[0] || { shortName: "상아건해", name: "상아건해", category: "건어물", phone: "상아건해", defaultBox: "B" };
+      selectedCompany = folders[0]?.companies?.[0] || { shortName: "상아건해", name: "상아건해", category: "건어물", phone: "010-5321-9988", defaultBox: "B" };
       currentSelectedCategory = selectedCompany.category;
 
       folders.forEach(f => { openAccordionMap[f.id] = true; });
@@ -650,7 +659,7 @@
             shortName: s.name,
             name: s.name,
             category: s.defaultItem || "일반",
-            phone: s.phone || s.location || s.name,
+            phone: s.phone || "",
             defaultBox: s.carrierSpec || "B"
           });
         });
@@ -842,6 +851,7 @@
     window.deleteVip = deleteVip;
     window.removeCompanyFromFolder = removeCompanyFromFolder;
     window.selectVipCustomerForCard = selectVipCustomerForCard;
+    window.updateVendorPhoneManual = updateVendorPhoneManual;
 
     function switchTab(tabId) {
       ['tabOrder', 'tabUnpaid', 'tabVip', 'tabFolder'].forEach(id => {
@@ -911,7 +921,7 @@
                   <span class="text-[9px] px-1 py-0.2 rounded ${isSel ? 'bg-amber-700 text-amber-100' : 'bg-slate-900 text-amber-400'}">${escapeHtml(c.category)}</span>
                 </div>
                 <div class="text-[10px] truncate ${isSel ? 'text-slate-950 font-bold' : 'text-slate-400'} mt-0.5">
-                  ${escapeHtml(c.phone)}
+                  ${escapeHtml(c.phone || '연락처 없음')}
                 </div>
               </button>
               <button type="button" onclick="openCompanyEditModal(${fIdx}, ${cIdx})" class="absolute top-1 right-1 opacity-80 hover:opacity-100 text-[10px] bg-slate-900/90 text-amber-300 px-1 py-0.5 rounded border border-slate-700">
@@ -972,8 +982,29 @@
       if (!selectedCompany) return;
       document.getElementById("scName").innerText = selectedCompany.name;
       document.getElementById("scCategory").innerText = currentSelectedCategory;
-      document.getElementById("scPhone").innerText = selectedCompany.phone || selectedCompany.name;
       document.getElementById("scBox").innerText = `디폴트: ${selectedCompany.defaultBox}`;
+
+      const phoneAlert = document.getElementById("vendorPhoneAlert");
+      const phoneDisplay = document.getElementById("scPhone");
+
+      const hasPhone = selectedCompany.phone && selectedCompany.phone.trim() && selectedCompany.phone !== selectedCompany.name;
+      if (!hasPhone) {
+        phoneAlert.classList.remove("hidden");
+        phoneDisplay.innerText = "연락처 미입력";
+        phoneDisplay.className = "font-mono text-rose-400 font-bold text-[11px]";
+      } else {
+        phoneAlert.classList.add("hidden");
+        phoneDisplay.innerText = selectedCompany.phone;
+        phoneDisplay.className = "font-mono text-amber-200 text-[11px]";
+      }
+    }
+
+    function updateVendorPhoneManual(val) {
+      if (!selectedCompany) return;
+      selectedCompany.phone = val.trim();
+      saveState();
+      updateSelectedCompanyDisplay();
+      updateSummaryOutput();
     }
 
     function renderItemChips() {
@@ -1478,9 +1509,16 @@
 
       let senderStr = "";
       if (actualSenderName || actualSenderPhone) {
-        senderStr = `${actualSenderName} ${actualSenderPhone}`.trim();
+        senderStr = `${actualSenderName} (${actualSenderPhone})`.trim();
       } else {
-        senderStr = `${selectedCompany.name} ${selectedCompany.phone || ''}`.trim();
+        const vendorPhone = (selectedCompany.phone && selectedCompany.phone.trim() && selectedCompany.phone !== selectedCompany.name)
+          ? selectedCompany.phone.trim()
+          : "";
+        if (vendorPhone) {
+          senderStr = `${selectedCompany.name} (${vendorPhone})`;
+        } else {
+          senderStr = `${selectedCompany.name} (🚨전화번호 누락)`;
+        }
       }
 
       let totalDestinations = 0;
@@ -1497,7 +1535,9 @@
           const isCod = it.type.startsWith("착불");
 
           if (isCod) {
-            boxTypeParts.push(`한진 ${it.type} ${it.count}건`);
+            const codNum = it.type.replace(/[^0-9]/g, '');
+            const codFormatted = codNum ? `착불 ${codNum}원` : it.type;
+            boxTypeParts.push(`한진 ${codFormatted} ${it.count}건`);
           } else if (it.type === "우체국") {
             boxTypeParts.push(`우체국 선불 ${it.count}건`);
           } else {
