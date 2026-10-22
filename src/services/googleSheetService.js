@@ -22,8 +22,7 @@ export function resolveCategory(rawCategory, item, location) {
 // 구글 시트 마스터 데이터 조회 (강제 갱신 파라미터 지원)
 export async function fetchMasterDataFromSheet() {
   try {
-    // 캐시 방지를 위해 timestamp 파라미터 추가
-    const res = await fetch(`${GAS_URL}?t=${Date.now()}`, { method: "GET" });
+    const res = await fetch(`${GAS_URL}?t=${Date.now()}`, { method: "GET", redirect: "follow" });
     if (!res.ok) throw new Error("네트워크 응답 오류");
     const json = await res.json();
 
@@ -70,7 +69,6 @@ export async function fetchMasterDataFromSheet() {
         };
       });
 
-      // 로컬스토리지 백업 저장
       localStorage.setItem("cached_stores", JSON.stringify(stores));
       localStorage.setItem("cached_customers", JSON.stringify(customers));
       localStorage.setItem("cached_last_sync", new Date().toLocaleTimeString("ko-KR"));
@@ -114,10 +112,11 @@ export function saveStoreToSheetAsync(store) {
 // 구글 시트 출고내역 목록 조회
 export async function fetchOrderLogsFromSheet() {
   try {
-    const res = await fetch(`${GAS_URL}?action=getLogs&t=${Date.now()}`, { method: "GET" });
+    const res = await fetch(`${GAS_URL}?action=get_logs&t=${Date.now()}`, { method: "GET", redirect: "follow" });
     if (!res.ok) throw new Error("네트워크 응답 오류");
     const json = await res.json();
     if (json.status === "success" && Array.isArray(json.logs)) {
+      localStorage.setItem("cached_logs", JSON.stringify(json.logs));
       return json.logs;
     }
   } catch (err) {
@@ -125,6 +124,8 @@ export async function fetchOrderLogsFromSheet() {
   }
   return null;
 }
+
+export const fetchLogsFromSheet = fetchOrderLogsFromSheet;
 
 // 구글 시트 출고내역 해당 행 취소 기록
 export function cancelOrderToSheetAsync(rowId) {
@@ -137,5 +138,24 @@ export function cancelOrderToSheetAsync(rowId) {
     }).catch(e => console.warn("출고 취소 시트 오류:", e));
   } catch (err) {
     console.warn("출고 취소 예외:", err);
+  }
+}
+
+// 웹앱 전체 데이터 구글 시트로 일괄 업로드 저장
+export async function syncAllToSheetAsync(stores, customers) {
+  try {
+    const res = await fetch(GAS_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({
+        action: "sync_all_to_sheet",
+        stores,
+        customers
+      })
+    });
+    return true;
+  } catch (err) {
+    console.warn("전체 시트 저장 오류:", err);
+    return false;
   }
 }
