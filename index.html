@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>우정물류 택배 접수 v5.8</title>
+  <title>우정물류 택배 접수 v5.9</title>
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#0284c7">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -39,7 +39,7 @@
   <header class="bg-sky-700 text-white p-3 shadow-lg sticky top-0 z-40 flex justify-between items-center">
     <div class="flex items-center space-x-2">
       <h1 onclick="window.open('https://focus.hanjin.com', '_blank', 'noopener,noreferrer')" title="한진포커스 이동" class="text-base font-black tracking-tight flex items-center gap-1.5 cursor-pointer hover:opacity-90 active:scale-95 transition">
-        <span>📦</span> <span>우정물류 택배 접수 v5.8</span>
+        <span>📦</span> <span>우정물류 택배 접수 v5.9</span>
       </h1>
     </div>
     <div class="flex items-center space-x-1.5">
@@ -744,9 +744,9 @@
     </div>
   </div>
 
-  <!-- JavaScript Engine v5.8 & Google Sheet Integration -->
+  <!-- JavaScript Engine v5.9 & Google Sheet Integration -->
   <script type="text/javascript">
-    // [우정물류 v5.8] 사장님 정식 구글 AI 키 영구 매립 기본값
+    // [우정물류 v5.9] 사장님 정식 구글 AI 키 영구 매립 기본값
     window.DEFAULT_GEMINI_KEY = "AQ.Ab8RN6LC6eO0M2d1mNsBbBWRKWzwG-6xQjixWpUbT-12LVUnsQ";
 
     // 키 조회 및 자동 복구 헬퍼
@@ -1600,6 +1600,7 @@ ${JSON.stringify(safeCustomers.slice(0, 50))}`;
     window.saveGeminiApiKey = saveGeminiApiKey;
     window.testGeminiKey = testGeminiKey;
     window.getGeminiApiKey = getGeminiApiKey;
+    window.getWorkingGeminiModel = getWorkingGeminiModel;
     window.openVipFormModal = openVipFormModal;
     window.editVipModal = editVipModal;
     window.saveVipForm = saveVipForm;
@@ -1621,6 +1622,7 @@ ${JSON.stringify(safeCustomers.slice(0, 50))}`;
     window.renderOrderLogsTable = renderOrderLogsTable;
     window.toggleTodayLogsFilter = toggleTodayLogsFilter;
     window.cancelOrderLogRow = cancelOrderLogRow;
+    window.deleteOrderLogRow = deleteOrderLogRow;
 
     function switchTab(tabId) {
       ['tabOrder', 'tabUnpaid', 'tabVip', 'tabFolder', 'tabLogs'].forEach(id => {
@@ -1718,10 +1720,13 @@ ${JSON.stringify(safeCustomers.slice(0, 50))}`;
           <td class="p-2 whitespace-nowrap font-bold text-amber-200">${escapeHtml(String(item.item || ''))} ${item.quantity ? escapeHtml(String(item.quantity)) + '건' : ''}</td>
           <td class="p-2 max-w-xs truncate text-[10px] text-slate-400">${escapeHtml(String(item.memo || ''))}</td>
           <td class="p-2 whitespace-nowrap text-center">
-            ${isCancelled
-              ? `<span class="text-[10px] text-rose-500 font-bold">취소됨</span>`
-              : `<button onclick="cancelOrderLogRow('${item.rowId || idx}')" class="bg-rose-950 hover:bg-rose-900 text-rose-300 border border-rose-800 px-2 py-0.5 rounded text-[10px] font-bold">🗑️ 취소</button>`
-            }
+            <div class="flex items-center justify-center gap-1">
+              ${isCancelled
+                ? `<span class="text-[10px] text-rose-500 font-bold mr-1">취소됨</span>`
+                : `<button onclick="cancelOrderLogRow('${item.rowId || idx}')" class="bg-slate-700 hover:bg-slate-600 text-slate-200 border border-slate-600 px-2 py-0.5 rounded text-[10px] font-bold">취소</button>`
+              }
+              <button onclick="deleteOrderLogRow('${item.rowId || idx}', ${idx})" class="bg-rose-950 hover:bg-rose-800 text-rose-200 border border-rose-700 px-2 py-0.5 rounded text-[10px] font-bold">🗑️ 삭제</button>
+            </div>
           </td>
         `;
         tbody.appendChild(tr);
@@ -1736,9 +1741,27 @@ ${JSON.stringify(safeCustomers.slice(0, 50))}`;
         log.status = "취소됨";
         log.cancelled = true;
       }
+      saveState();
       renderOrderLogsTable();
       cancelOrderToSheetAsync(rowId);
       alert("해당 출고 건이 취소 처리되었습니다.");
+    }
+
+    function deleteOrderLogRow(rowId, idx) {
+      if (!confirm("선택한 출고 내역을 장부에서 영구 삭제하시겠습니까?")) return;
+
+      const findIdx = cachedOrderLogs.findIndex((l, i) => l.rowId === rowId || i === idx || i == rowId);
+      if (findIdx >= 0) {
+        cachedOrderLogs.splice(findIdx, 1);
+      } else if (idx >= 0 && idx < cachedOrderLogs.length) {
+        cachedOrderLogs.splice(idx, 1);
+      }
+
+      saveState();
+      renderOrderLogsTable();
+
+      // Async backend deletion
+      cancelOrderToSheetAsync(rowId, { action: "delete_log" });
     }
 
     function openModal(id) {
@@ -2534,10 +2557,124 @@ ${JSON.stringify(safeCustomers.slice(0, 50))}`;
 
     function clearRawTextInput() { document.getElementById("rawTextInput").value = ""; }
 
-    function parseRawText() {
-      const raw = document.getElementById("rawTextInput").value.trim();
-      if (!raw) return alert("원문을 입력하세요.");
+    async function parseRawText() {
+      const rawElem = document.getElementById("rawTextInput");
+      const raw = rawElem ? rawElem.value.trim() : "";
 
+      // Case A: Raw text is empty, check if photo is attached
+      if (!raw) {
+        const attachedFiles = (currentPhotoFiles && currentPhotoFiles.length > 0)
+          ? currentPhotoFiles
+          : (currentPhotoFile ? [currentPhotoFile] : []);
+
+        if (attachedFiles.length > 0) {
+          await runGeminiVisionOCRQueue(attachedFiles);
+          return;
+        } else {
+          return alert("원문 텍스트를 입력하거나 전표 사진을 먼저 첨부해 주세요.");
+        }
+      }
+
+      // Case B: Raw text is provided - Try AI Text Extraction first if key exists
+      if (Boolean(geminiApiKey && geminiApiKey.length > 10)) {
+        try {
+          const activeModel = await getWorkingGeminiModel(geminiApiKey);
+          const fallbackModels = [activeModel, "gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash", "gemini-3.8-flash"];
+
+          const prompt = `다음은 한국 택배 발송용 카톡/문자 원문 텍스트입니다. 텍스트 속에서 모든 수취인(받는 사람) 및 발송인(보내는 사람) 정보를 정밀하게 추출하세요.
+응답은 오직 JSON 배열 형태로만 반환하고 마크다운(\`\`\`json) 없이 순수 JSON만 반환하세요:
+[
+  {
+    "name": "수취인 이름 또는 상호명",
+    "phone": "전화번호 (예: 010-1234-5678)",
+    "address": "도로명 또는 지번 주소",
+    "item": "품목명",
+    "boxType": "택배 규격 (예: B, 우체국, 착불 5000원)",
+    "quantity": 1,
+    "memo": "배송 메모",
+    "senderName": "보내는사람 이름/상호명 (있을경우)",
+    "senderPhone": "보내는사람 연락처 (있을경우)"
+  }
+]
+
+원문 텍스트:
+${raw}`;
+
+          let response = null;
+          for (const model of Array.from(new Set(fallbackModels))) {
+            try {
+              const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiApiKey}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+              });
+              if (res.ok) {
+                response = res;
+                break;
+              }
+            } catch (e) {}
+          }
+
+          if (response && response.ok) {
+            const data = await response.json();
+            const textRes = data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+            const cleaned = textRes.replace(/```json/gi, '').replace(/```/g, '').trim();
+            const parsedArray = JSON.parse(cleaned);
+
+            if (Array.isArray(parsedArray) && parsedArray.length > 0) {
+              if (parsedArray.length >= 2) {
+                toggleMultiMode(true);
+                const multiToggle = document.getElementById("multiModeToggle");
+                if (multiToggle) multiToggle.checked = true;
+                recipientCards = [];
+              } else if (recipientCards.length === 1 && !recipientCards[0].name && !recipientCards[0].phone && !recipientCards[0].address) {
+                recipientCards = [];
+              }
+
+              let senderSet = false;
+
+              parsedArray.forEach(rec => {
+                if (!senderSet && (rec.senderName || rec.senderPhone)) {
+                  if (rec.senderName) {
+                    selectCompanyByName(rec.senderName);
+                    document.getElementById("actualSenderNameInput").value = rec.senderName;
+                  }
+                  if (rec.senderPhone) {
+                    document.getElementById("actualSenderPhoneInput").value = autoHyphenPhone(rec.senderPhone);
+                  }
+                  toggleActualSenderPanel();
+                  document.getElementById("actualSenderPanel").classList.remove("hidden");
+                  senderSet = true;
+                }
+
+                const cardId = Date.now() + Math.floor(Math.random() * 10000);
+                const newCard = {
+                  id: cardId,
+                  name: rec.name || "",
+                  phone: autoHyphenPhone(rec.phone || ""),
+                  address: rec.address || "",
+                  itemOverride: rec.item || "",
+                  memo: rec.memo || "",
+                  imageSrc: "",
+                  items: [{ type: rec.boxType || (selectedCompany ? selectedCompany.defaultBox : "B"), count: rec.quantity || 1 }]
+                };
+                recipientCards.push(newCard);
+                reverseBindRecipientToCompany(newCard);
+                validateCard(newCard);
+              });
+
+              renderRecipientCards();
+              updateSummaryOutput();
+              alert(`✅ AI 원문 정밀 파싱 완료! (총 ${recipientCards.length}건 처리)`);
+              return;
+            }
+          }
+        } catch (err) {
+          console.warn("AI text parse failed, falling back to regex parser:", err);
+        }
+      }
+
+      // Offline Regex Fallback
       let t = raw
         .replace(/강\s*원\s*도/g, "강원도")
         .replace(/010[\.\s]+(\d{3,4})[\.\s]+(\d{4})/g, "010-$1-$2");
@@ -2558,7 +2695,6 @@ ${JSON.stringify(safeCustomers.slice(0, 50))}`;
       const allPhoneMatches = t.match(/01[016789]-?\d{3,4}-?\d{4}/g) || [];
 
       if (allPhoneMatches.length >= 2) {
-        // Multi-recipient auto split
         toggleMultiMode(true);
         recipientCards = [];
 
@@ -2624,7 +2760,7 @@ ${JSON.stringify(safeCustomers.slice(0, 50))}`;
 
       // Single recipient parse fallback
       const recipientMatch = t.match(/(?:받는사람|받는분|수취인)\s*[:\s]*([^\n\r]+)/i);
-      const addressMatch = t.match(/(?:받는주소|배송지|주소)\s*[:\s]*([^\n\r]+)/i);
+      const addressMatch = t.match(/(?:받는주소|배송지|주소)\s*[:\s]*([^\\n\r]+)/i);
 
       let name = recipientMatch ? recipientMatch[1].replace(/01[016789]-?\d{3,4}-?\d{4}/, '').trim() : "";
       let phone = "";
@@ -2656,6 +2792,7 @@ ${JSON.stringify(safeCustomers.slice(0, 50))}`;
         alert("원문 자동 분석 완료!");
       }
     }
+
 
     function updateSummaryOutput() {
       if (!selectedCompany) return;
@@ -3243,8 +3380,10 @@ ${JSON.stringify(safeCustomers.slice(0, 50))}`;
 
       let totalFiles = files.length;
       let allExtractedRecipients = [];
+      let lastErrorMessage = "";
 
-      const fallbackModels = ["gemini-3.8-flash", "gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"];
+      const activeModel = await getWorkingGeminiModel(geminiApiKey);
+      const fallbackModels = [activeModel, "gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash", "gemini-3.8-flash"];
 
       for (let i = 0; i < totalFiles; i++) {
         const file = files[i];
@@ -3256,7 +3395,7 @@ ${JSON.stringify(safeCustomers.slice(0, 50))}`;
           const cleanBase64 = await compressImageToCanvasBase64(file, 1280, 0.85);
           const fileImageUrl = URL.createObjectURL(file);
 
-          const prompt = `이 사진은 한국 택배 전표 또는 손글씨 수기 명세서입니다. 사진 속에 있는 모든 수취인(받는 사람)의 정보를 추출하세요.
+          const prompt = `이 사진은 한국 택배 전표 또는 손글씨 수기 명세서입니다. 사진 속에 있는 모든 수취인(받는 사람) 및 발송인(보내는 사람) 정보를 추출하세요.
 한 장에 여러 수취인이 적혀 있을 경우 각각 분리하여 JSON 배열 형태로만 정확히 반환하세요.
 응답은 오직 아래 형태의 JSON 배열이어야 하며, 마크다운(\`\`\`json) 없이 순수 JSON만 반환하세요:
 [
@@ -3266,12 +3405,17 @@ ${JSON.stringify(safeCustomers.slice(0, 50))}`;
     "address": "도로명 또는 지번 주소",
     "item": "품목명 (예: 고구마, 감자, 건어물 등)",
     "quantity": 1,
-    "boxType": "한진 B 또는 우체국 또는 착불 5000원 등"
+    "boxType": "한진 B 또는 우체국 또는 착불 5000원 등",
+    "memo": "배송 메모",
+    "senderName": "보내는사람 이름/상호명 (있을경우)",
+    "senderPhone": "보내는사람 연락처 (있을경우)"
   }
 ]`;
 
           let response = null;
-          for (const model of fallbackModels) {
+          let modelErrStr = "";
+
+          for (const model of Array.from(new Set(fallbackModels))) {
             try {
               const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiApiKey}`, {
                 method: "POST",
@@ -3289,15 +3433,17 @@ ${JSON.stringify(safeCustomers.slice(0, 50))}`;
                 response = res;
                 break;
               } else {
-                console.warn(`Model ${model} failed with status ${res.status}`);
+                const errJson = await res.json().catch(() => ({}));
+                modelErrStr = `HTTP ${res.status}: ${errJson.error?.message || res.statusText}`;
               }
             } catch (err) {
-              console.warn(`Fetch error for model ${model}:`, err);
+              modelErrStr = err.message;
             }
           }
 
           if (!response || !response.ok) {
-            console.warn("All Gemini OCR model attempts failed for file:", file.name);
+            lastErrorMessage = modelErrStr || "Gemini Vision API 호출 실패";
+            console.warn("All Gemini OCR model attempts failed for file:", file.name, lastErrorMessage);
             continue;
           }
 
@@ -3316,6 +3462,7 @@ ${JSON.stringify(safeCustomers.slice(0, 50))}`;
             });
           }
         } catch (err) {
+          lastErrorMessage = err.message;
           console.warn("OCR Parsing error for file", file.name, err);
         }
       }
@@ -3326,13 +3473,32 @@ ${JSON.stringify(safeCustomers.slice(0, 50))}`;
         // 1. Populate #rawTextInput
         const rawInput = document.getElementById("rawTextInput");
         if (rawInput) {
-          const summaryLines = allExtractedRecipients.map(r =>
-            `받는사람: ${r.name || ""} / ${r.phone || ""} / ${r.address || ""} / ${r.item || ""}`
-          );
+          const summaryLines = allExtractedRecipients.map(r => {
+            let line = `받는사람: ${r.name || ""} / ${r.phone || ""} / ${r.address || ""} / ${r.item || ""}`;
+            if (r.senderName || r.senderPhone) {
+              line += ` (보내는사람: ${r.senderName || ""} ${r.senderPhone || ""})`;
+            }
+            return line;
+          });
           rawInput.value = summaryLines.join("\n");
         }
 
-        // 2. Populate recipientCards
+        // 2. Populate sender inputs if detected
+        const firstSenderName = allExtractedRecipients.find(r => r.senderName)?.senderName || "";
+        const firstSenderPhone = allExtractedRecipients.find(r => r.senderPhone)?.senderPhone || "";
+        if (firstSenderName || firstSenderPhone) {
+          if (firstSenderName) {
+            selectCompanyByName(firstSenderName);
+            document.getElementById("actualSenderNameInput").value = firstSenderName;
+          }
+          if (firstSenderPhone) {
+            document.getElementById("actualSenderPhoneInput").value = autoHyphenPhone(firstSenderPhone);
+          }
+          toggleActualSenderPanel();
+          document.getElementById("actualSenderPanel").classList.remove("hidden");
+        }
+
+        // 3. Populate recipientCards
         if (files.length >= 2 || allExtractedRecipients.length >= 2) {
           toggleMultiMode(true);
           const multiToggle = document.getElementById("multiModeToggle");
@@ -3365,8 +3531,11 @@ ${JSON.stringify(safeCustomers.slice(0, 50))}`;
         });
 
         renderRecipientCards();
-        // 3. Populate #summaryOutput
         updateSummaryOutput();
+      } else {
+        const errMsg = lastErrorMessage || "사진 속 수취인 글씨를 분석하지 못했습니다. 키 설정과 사진 해상도를 확인하세요.";
+        if (ocrStatusMsg) ocrStatusMsg.innerText = `❌ ${errMsg}`;
+        alert(`❌ AI 사진 분석 실패: ${errMsg}`);
       }
     }
 
@@ -3383,7 +3552,7 @@ ${JSON.stringify(safeCustomers.slice(0, 50))}`;
       if (navigator.share) {
         try {
           await navigator.share({
-            title: "우정물류 택배 접수 v5.8",
+            title: "우정물류 택배 접수 v5.9",
             text: text
           });
         } catch (err) {}
@@ -3417,6 +3586,40 @@ ${JSON.stringify(safeCustomers.slice(0, 50))}`;
       } else {
         shareTextOnlyKakao();
       }
+    }
+
+    let cachedWorkingModel = "gemini-2.5-flash";
+
+    async function getWorkingGeminiModel(apiKey) {
+      const cleanKey = (apiKey || getGeminiApiKey() || "").trim();
+      if (!cleanKey) return "gemini-2.5-flash";
+
+      try {
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${cleanKey}`);
+        if (res.ok) {
+          const data = await res.json();
+          const modelsList = data.models || [];
+          const validFlashModels = modelsList.filter(m => {
+            const name = (m.name || "").toLowerCase();
+            const methods = m.supportedGenerationMethods || [];
+            const supportsGen = methods.length === 0 || methods.includes("generateContent");
+            return supportsGen && name.includes("flash");
+          }).map(m => m.name.replace(/^models\//, ""));
+
+          if (validFlashModels.length > 0) {
+            const chosen = validFlashModels.find(m => m.includes("2.5"))
+              || validFlashModels.find(m => m.includes("2.0"))
+              || validFlashModels.find(m => m.includes("1.5"))
+              || validFlashModels.find(m => m.includes("3.8"))
+              || validFlashModels[0];
+            cachedWorkingModel = chosen;
+            return chosen;
+          }
+        }
+      } catch (err) {
+        console.warn("Failed to discover models via API, using fallback:", err);
+      }
+      return cachedWorkingModel || "gemini-2.5-flash";
     }
 
     let cachedActiveGeminiModel = "gemini-3.8-flash";
