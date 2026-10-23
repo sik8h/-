@@ -39,7 +39,7 @@
   <header class="bg-sky-700 text-white p-3 shadow-lg sticky top-0 z-40 flex justify-between items-center">
     <div class="flex items-center space-x-2">
       <h1 onclick="window.open('https://focus.hanjin.com', '_blank', 'noopener,noreferrer')" title="한진포커스 이동" class="text-base font-black tracking-tight flex items-center gap-1.5 cursor-pointer hover:opacity-90 active:scale-95 transition">
-        <span>📦</span> <span>우정물류 택배 접수 v5.6</span>
+        <span>📦</span> <span>우정물류 택배 접수 v5.7</span>
       </h1>
     </div>
     <div class="flex items-center space-x-1.5">
@@ -583,7 +583,7 @@
       <p class="text-xs text-slate-300 leading-relaxed">
         Google Gemini API 키를 등록하시면 전표 사진에서 수취인 정보를 자동 추출합니다.
       </p>
-      <input type="password" id="geminiApiKeyInput" placeholder="AIzaSy..." class="w-full bg-slate-900 border border-slate-700 text-sm font-mono rounded-lg p-2.5 text-white focus:outline-none focus:border-amber-500">
+      <input type="password" id="geminiApiKeyInput" placeholder="AQ... 또는 Gemini API 키" class="w-full bg-slate-900 border border-slate-700 text-sm font-mono rounded-lg p-2.5 text-white focus:outline-none focus:border-amber-500">
 
       <div class="flex justify-between items-center">
         <button onclick="testGeminiKey()" class="bg-sky-700 hover:bg-sky-600 text-sky-100 font-bold text-xs px-3 py-2 rounded-lg border border-sky-500 flex items-center gap-1">
@@ -742,8 +742,21 @@
     </div>
   </div>
 
-  <!-- JavaScript Engine v5.6 & Google Sheet Integration -->
+  <!-- JavaScript Engine v5.7 & Google Sheet Integration -->
   <script type="text/javascript">
+    // [우정물류 v5.7] 사장님 정식 구글 AI 키 영구 매립 기본값
+    window.DEFAULT_GEMINI_KEY = "AQ.Ab8RN6LC6eO0M2d1mNsBbBWRKWzwG-6xQjixWpUbT-12LVUnsQ";
+
+    // 키 조회 및 자동 복구 헬퍼
+    window.getGeminiApiKey = function() {
+      let key = localStorage.getItem("garak_gemini_key") || localStorage.getItem("gemini_api_key");
+      if (!key || key.trim() === "") {
+        key = window.DEFAULT_GEMINI_KEY;
+        localStorage.setItem("garak_gemini_key", window.DEFAULT_GEMINI_KEY);
+      }
+      return key.trim();
+    };
+
     window.onerror = function(msg, url, lineNo, columnNo, error) {
       console.error("Global Runtime Error Boundary:", msg, error);
       return true; // Prevents White Screen of Death
@@ -907,8 +920,8 @@
         cachedOrderLogs = savedLogs ? JSON.parse(savedLogs) : [];
       } catch (e) { cachedOrderLogs = []; }
 
-      geminiApiKey = localStorage.getItem("gemini_api_key") || localStorage.getItem("woojung_geminiKey") || "";
-      if (geminiApiKey && document.getElementById("geminiApiKeyInput")) {
+      geminiApiKey = getGeminiApiKey();
+      if (document.getElementById("geminiApiKeyInput")) {
         document.getElementById("geminiApiKeyInput").value = geminiApiKey;
       }
       updateAiStatusIndicator();
@@ -929,6 +942,7 @@
       localStorage.setItem("woojung_learned_senders", JSON.stringify(learnedSenders));
       localStorage.setItem("woojung_consignments", JSON.stringify(customConsignments));
       localStorage.setItem("cached_logs", JSON.stringify(cachedOrderLogs));
+      localStorage.setItem("garak_gemini_key", geminiApiKey);
       localStorage.setItem("gemini_api_key", geminiApiKey);
       localStorage.setItem("woojung_geminiKey", geminiApiKey);
     }
@@ -1276,7 +1290,7 @@
       msgContainer.appendChild(loadingBubble);
       msgContainer.scrollTop = msgContainer.scrollHeight;
 
-      if (!geminiApiKey || !geminiApiKey.startsWith("AIzaSy")) {
+      if (!geminiApiKey) {
         document.getElementById(loadingId).remove();
         const errBubble = document.createElement("div");
         errBubble.className = "flex justify-start";
@@ -1555,6 +1569,7 @@ ${JSON.stringify(safeCustomers.slice(0, 50))}`;
     window.shareTextOnlyKakao = shareTextOnlyKakao;
     window.saveGeminiApiKey = saveGeminiApiKey;
     window.testGeminiKey = testGeminiKey;
+    window.getGeminiApiKey = getGeminiApiKey;
     window.openVipFormModal = openVipFormModal;
     window.editVipModal = editVipModal;
     window.saveVipForm = saveVipForm;
@@ -1697,6 +1712,12 @@ ${JSON.stringify(safeCustomers.slice(0, 50))}`;
     }
 
     function openModal(id) {
+      if (id === 'geminiModal') {
+        const input = document.getElementById('geminiApiKeyInput');
+        if (input) {
+          input.value = getGeminiApiKey();
+        }
+      }
       const elem = document.getElementById(id);
       if (elem) {
         elem.classList.remove('hidden');
@@ -3015,7 +3036,7 @@ ${JSON.stringify(safeCustomers.slice(0, 50))}`;
 
       currentPhotoFile = files[0];
 
-      if (geminiApiKey && geminiApiKey.startsWith("AIzaSy")) {
+      if (geminiApiKey) {
         await runGeminiVisionOCRQueue(files);
       }
     }
@@ -3125,7 +3146,7 @@ ${JSON.stringify(safeCustomers.slice(0, 50))}`;
       if (navigator.share) {
         try {
           await navigator.share({
-            title: "우정물류 택배 접수 v5.6",
+            title: "우정물류 택배 접수 v5.7",
             text: text
           });
         } catch (err) {}
@@ -3196,7 +3217,7 @@ ${JSON.stringify(safeCustomers.slice(0, 50))}`;
       const badge = document.getElementById("aiStatusBadge");
       if (!badge) return;
 
-      if (geminiApiKey && geminiApiKey.startsWith("AIzaSy")) {
+      if (geminiApiKey && geminiApiKey.trim() !== "") {
         badge.innerText = "🟢 AI 준비완료";
         badge.className = "text-[11px] font-bold px-2 py-0.5 rounded-full border bg-emerald-950/80 border-emerald-600 text-emerald-300";
       } else {
