@@ -2129,6 +2129,8 @@ ${JSON.stringify(safeCustomers.slice(0, 50))}`;
 
       if (field === 'phone') {
         value = autoHyphenPhone(value);
+        const inputElem = document.querySelector(`input[oninput*="updateCardField('${id}', 'phone'"]`);
+        if (inputElem && inputElem.value !== value) inputElem.value = value;
       }
       card[field] = value;
 
