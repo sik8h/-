@@ -1,4 +1,4 @@
-const CACHE_NAME = 'woojung-v3.5-' + Date.now();
+const CACHE_NAME = 'woojung-v5.5';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
