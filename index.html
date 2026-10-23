@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>우정물류 택배 접수 v3.5</title>
+  <title>우정물류 택배 접수 v5.5</title>
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#0284c7">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -39,7 +39,7 @@
   <header class="bg-sky-700 text-white p-3 shadow-lg sticky top-0 z-40 flex justify-between items-center">
     <div class="flex items-center space-x-2">
       <h1 onclick="window.open('https://focus.hanjin.com', '_blank', 'noopener,noreferrer')" title="한진포커스 이동" class="text-base font-black tracking-tight flex items-center gap-1.5 cursor-pointer hover:opacity-90 active:scale-95 transition">
-        <span>📦</span> <span>우정물류 택배 접수 v4.0</span>
+        <span>📦</span> <span>우정물류 택배 접수 v5.5</span>
       </h1>
     </div>
     <div class="flex items-center space-x-1.5">
@@ -207,7 +207,18 @@
             <input type="tel" id="vendorPhoneManualInput" oninput="updateVendorPhoneManual(this.value)" placeholder="업체 전화번호 입력 (예: 010-1234-5678)" class="w-full bg-slate-900 border border-rose-500 rounded-lg p-1.5 text-xs text-white font-mono">
           </div>
 
-          <div class="border-t border-slate-800 pt-2">
+          <div class="border-t border-slate-800 pt-2 space-y-2">
+            <!-- Consignment Preset Chips (One-touch) -->
+            <div id="consignmentArea" class="p-2 bg-purple-950/40 border border-purple-800/60 rounded-xl space-y-1">
+              <div class="text-[10px] text-purple-300 font-bold flex justify-between items-center">
+                <span>⚡ 위탁 발송 원터치 프리셋</span>
+                <button type="button" onclick="saveCurrentSenderAsConsignment()" class="text-[10px] bg-purple-900 hover:bg-purple-800 text-purple-200 px-2 py-0.5 rounded border border-purple-600 font-bold">+ 위탁 저장</button>
+              </div>
+              <div id="consignmentChipsContainer" class="flex gap-1 overflow-x-auto pb-1 text-[11px]">
+                <!-- JS Consignment Chips -->
+              </div>
+            </div>
+
             <button type="button" onclick="toggleActualSenderPanel()" class="text-[11px] text-sky-400 hover:text-sky-300 font-bold flex items-center justify-between w-full">
               <span>🔄 [실제 보내는사람(송장 발송인)이 업체와 다를 때]</span>
               <span id="senderPanelIcon">▼</span>
@@ -476,7 +487,7 @@
       <!-- Header -->
       <div class="p-3 bg-slate-900 border-b border-slate-700 flex justify-between items-center shrink-0">
         <h3 class="text-xs font-bold text-amber-400 flex items-center gap-1.5">
-          <span>💬</span> 우정물류 AI 비서 <span class="text-[10px] text-slate-400 font-mono">(Gemini 2.0 Flash)</span>
+          <span>💬</span> 우정물류 AI 비서 <span class="text-[10px] text-slate-400 font-mono">(Gemini AI)</span>
         </h3>
         <button onclick="closeModal('aiChatModal')" class="text-slate-400 hover:text-white text-lg font-bold">&times;</button>
       </div>
@@ -731,7 +742,7 @@
     </div>
   </div>
 
-  <!-- JavaScript Engine v3.5 & Google Sheet Integration -->
+  <!-- JavaScript Engine v5.5 & Google Sheet Integration -->
   <script type="text/javascript">
     window.onerror = function(msg, url, lineNo, columnNo, error) {
       console.error("Global Runtime Error Boundary:", msg, error);
@@ -840,6 +851,7 @@
     let unpaidLedger = {};
     let itemChips = [];
     let learnedSenders = [];
+    let customConsignments = [];
     let geminiApiKey = "";
     let isMultiMode = false;
     let cachedOrderLogs = [];
@@ -886,6 +898,11 @@
       } catch (e) { learnedSenders = []; }
 
       try {
+        const savedConsignments = localStorage.getItem("woojung_consignments");
+        customConsignments = savedConsignments ? JSON.parse(savedConsignments) : [];
+      } catch (e) { customConsignments = []; }
+
+      try {
         const savedLogs = localStorage.getItem("cached_logs");
         cachedOrderLogs = savedLogs ? JSON.parse(savedLogs) : [];
       } catch (e) { cachedOrderLogs = []; }
@@ -910,9 +927,101 @@
       localStorage.setItem("custom_items", JSON.stringify(itemChips));
       localStorage.setItem("woojung_itemChips", JSON.stringify(itemChips));
       localStorage.setItem("woojung_learned_senders", JSON.stringify(learnedSenders));
+      localStorage.setItem("woojung_consignments", JSON.stringify(customConsignments));
       localStorage.setItem("cached_logs", JSON.stringify(cachedOrderLogs));
       localStorage.setItem("gemini_api_key", geminiApiKey);
       localStorage.setItem("woojung_geminiKey", geminiApiKey);
+    }
+
+    function applyConsignmentSender(name, phone) {
+      const nameInput = document.getElementById("actualSenderNameInput");
+      const phoneInput = document.getElementById("actualSenderPhoneInput");
+      if (nameInput) nameInput.value = name;
+      if (phoneInput) phoneInput.value = phone;
+
+      const panel = document.getElementById("actualSenderPanel");
+      const icon = document.getElementById("senderPanelIcon");
+      if (panel && panel.classList.contains("hidden")) {
+        panel.classList.remove("hidden");
+        if (icon) icon.innerText = "▲";
+      }
+
+      updateSummaryOutput();
+    }
+
+    function saveConsignmentSender(name, phone) {
+      if (!name || !phone) return;
+      const existingIdx = customConsignments.findIndex(c => c.name === name || c.phone === phone);
+      if (existingIdx >= 0) {
+        customConsignments.splice(existingIdx, 1);
+      }
+      customConsignments.unshift({ name, phone });
+      if (customConsignments.length > 10) customConsignments = customConsignments.slice(0, 10);
+      saveState();
+      renderConsignmentChips();
+    }
+
+    function saveCurrentSenderAsConsignment() {
+      const name = document.getElementById("actualSenderNameInput")?.value.trim();
+      const phone = document.getElementById("actualSenderPhoneInput")?.value.trim();
+      if (!name || !phone) {
+        alert("실제 발송인 상호/성명과 연락처를 모두 입력해 주세요.");
+        return;
+      }
+      saveConsignmentSender(name, phone);
+      alert(`✅ 위탁 발송인 [${name}] 저장 완료!`);
+    }
+
+    function deleteConsignmentSender(idx, event) {
+      if (event) event.stopPropagation();
+      customConsignments.splice(idx, 1);
+      saveState();
+      renderConsignmentChips();
+    }
+
+    function renderConsignmentChips() {
+      const container = document.getElementById("consignmentChipsContainer");
+      if (!container) return;
+      container.innerHTML = "";
+
+      const chipsList = [];
+
+      // Default preset for 성광건해
+      if (selectedCompany && selectedCompany.name.includes("성광건해")) {
+        chipsList.push({ name: "오지다건해", phone: "010-9209-2048", isBuiltin: true });
+      }
+
+      // Custom consignments from woojung_consignments
+      customConsignments.forEach((c, idx) => {
+        if (!chipsList.some(item => item.name === c.name && item.phone === c.phone)) {
+          chipsList.push({ ...c, idx, isBuiltin: false });
+        }
+      });
+
+      if (chipsList.length === 0) {
+        document.getElementById("consignmentArea")?.classList.add("hidden");
+        return;
+      } else {
+        document.getElementById("consignmentArea")?.classList.remove("hidden");
+      }
+
+      chipsList.forEach(item => {
+        const chipBtn = document.createElement("button");
+        chipBtn.type = "button";
+        chipBtn.className = "bg-purple-950/90 hover:bg-purple-900 text-purple-200 border border-purple-600 px-2.5 py-1 rounded-lg font-bold text-[11px] shrink-0 flex items-center gap-1 active:scale-95 transition";
+        chipBtn.innerHTML = `<span>⚡ 위탁: ${item.name}</span> <span class="text-[9px] opacity-80">(${item.phone})</span>`;
+        chipBtn.onclick = () => applyConsignmentSender(item.name, item.phone);
+
+        if (!item.isBuiltin) {
+          const delBtn = document.createElement("span");
+          delBtn.className = "ml-1 text-rose-400 hover:text-rose-200 font-bold cursor-pointer";
+          delBtn.innerText = "×";
+          delBtn.onclick = (e) => deleteConsignmentSender(item.idx, e);
+          chipBtn.appendChild(delBtn);
+        }
+
+        container.appendChild(chipBtn);
+      });
     }
 
     function renderLearnedSendersChips() {
@@ -944,6 +1053,7 @@
       if (learnedSenders.length > 10) learnedSenders = learnedSenders.slice(0, 10);
       saveState();
       renderLearnedSendersChips();
+      saveConsignmentSender(name, phone);
     }
 
     function toggleMultiMode(enabled) {
@@ -1212,7 +1322,8 @@ ${JSON.stringify(safeLogs.slice(0, 30))}
 ${JSON.stringify(safeCustomers.slice(0, 50))}`;
 
       try {
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`, {
+        const modelName = await resolveActiveGeminiModel(geminiApiKey);
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${geminiApiKey}`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -1726,6 +1837,8 @@ ${JSON.stringify(safeCustomers.slice(0, 50))}`;
         phoneDisplay.innerText = selectedCompany.phone;
         phoneDisplay.className = "font-mono text-amber-200 text-[11px]";
       }
+
+      renderConsignmentChips();
     }
 
     function updateVendorPhoneManual(val) {
@@ -1767,6 +1880,7 @@ ${JSON.stringify(safeCustomers.slice(0, 50))}`;
         selectedCompany.category = itemName;
       }
       renderItemChips();
+      renderConsignmentChips();
       updateSelectedCompanyDisplay();
       updateSummaryOutput();
     }
@@ -2557,6 +2671,12 @@ ${JSON.stringify(safeCustomers.slice(0, 50))}`;
     function copySummaryText() {
       if (!validateActualSenderGuard()) return;
 
+      const sName = document.getElementById("actualSenderNameInput") ? document.getElementById("actualSenderNameInput").value.trim() : "";
+      const sPhone = document.getElementById("actualSenderPhoneInput") ? document.getElementById("actualSenderPhoneInput").value.trim() : "";
+      if (sName && sPhone) {
+        saveConsignmentSender(sName, sPhone);
+      }
+
       const text = document.getElementById("summaryOutput").value;
       navigator.clipboard.writeText(text).then(() => {
         alert("접수 요약 텍스트가 복사되었습니다!");
@@ -2934,7 +3054,8 @@ ${JSON.stringify(safeCustomers.slice(0, 50))}`;
   }
 ]`;
 
-          const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`, {
+          const modelName = await resolveActiveGeminiModel(geminiApiKey);
+          const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${geminiApiKey}`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -3006,7 +3127,7 @@ ${JSON.stringify(safeCustomers.slice(0, 50))}`;
       if (navigator.share) {
         try {
           await navigator.share({
-            title: "우정물류 택배 접수 v3.5",
+            title: "우정물류 택배 접수 v5.5",
             text: text
           });
         } catch (err) {}
@@ -3038,12 +3159,46 @@ ${JSON.stringify(safeCustomers.slice(0, 50))}`;
       }
     }
 
+    let cachedActiveGeminiModel = "";
+
+    async function resolveActiveGeminiModel(apiKey) {
+      const cleanKey = (apiKey || geminiApiKey || "").trim();
+      if (!cleanKey) return "gemini-1.5-flash";
+
+      try {
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${cleanKey}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        const modelsList = data.models || [];
+
+        const validFlashModels = modelsList.filter(m => {
+          const name = (m.name || "").toLowerCase();
+          const methods = m.supportedGenerationMethods || [];
+          const supportsGen = methods.length === 0 || methods.includes("generateContent");
+          return supportsGen && name.includes("flash") && !name.includes("2.0");
+        }).map(m => m.name.replace(/^models\//, ""));
+
+        if (validFlashModels.length > 0) {
+          const chosen = validFlashModels.find(m => m.includes("2.5"))
+            || validFlashModels.find(m => m.includes("1.5"))
+            || validFlashModels.find(m => m.includes("flash-latest"))
+            || validFlashModels[0];
+          cachedActiveGeminiModel = chosen;
+          return chosen;
+        }
+      } catch (err) {
+        console.warn("Failed to fetch Gemini models:", err);
+      }
+
+      return cachedActiveGeminiModel || "gemini-1.5-flash";
+    }
+
     function updateAiStatusIndicator() {
       const badge = document.getElementById("aiStatusBadge");
       if (!badge) return;
 
       if (geminiApiKey && geminiApiKey.startsWith("AIzaSy")) {
-        badge.innerText = "🟢 AI 자동인식 가동중";
+        badge.innerText = "🟢 AI 연결됨";
         badge.className = "text-[11px] font-bold px-2 py-0.5 rounded-full border bg-emerald-950/80 border-emerald-600 text-emerald-300";
       } else {
         badge.innerText = "🔴 AI 키 설정 필요";
@@ -3065,10 +3220,11 @@ ${JSON.stringify(safeCustomers.slice(0, 50))}`;
       }
 
       box.classList.add("bg-slate-900", "border-slate-700", "text-slate-300");
-      box.innerText = "⏳ 구글 AI 연결 테스트 중...";
+      box.innerText = "⏳ 구글 AI 연결 및 최신 모델 자동 탐색 중...";
 
       try {
-        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${keyInput}`, {
+        const modelName = await resolveActiveGeminiModel(keyInput);
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${keyInput}`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ contents: [{ parts: [{ text: "ping" }] }] })
@@ -3077,7 +3233,12 @@ ${JSON.stringify(safeCustomers.slice(0, 50))}`;
         if (res.ok && data.candidates) {
           box.classList.remove("bg-slate-900", "border-slate-700", "text-slate-300");
           box.classList.add("bg-emerald-950", "border-emerald-600", "text-emerald-300");
-          box.innerText = "✅ 구글 AI 정상 연결 완료! (무료 티어 정상 작동)";
+          box.innerText = `✅ 연결 성공! (자동 연결 모델: ${modelName})`;
+          const badge = document.getElementById("aiStatusBadge");
+          if (badge) {
+            badge.innerText = "🟢 AI 연결됨";
+            badge.className = "text-[11px] font-bold px-2 py-0.5 rounded-full border bg-emerald-950/80 border-emerald-600 text-emerald-300";
+          }
         } else {
           box.classList.remove("bg-slate-900", "border-slate-700", "text-slate-300");
           box.classList.add("bg-rose-950", "border-rose-600", "text-rose-300");
